@@ -1,0 +1,90 @@
+name: debug-uploader-state
+type: ops
+
+tasks:
+  - name: debug-uploader-detection
+    engine:
+      type: docker
+      params:
+        image: ghcr.io/bacalhau-project/databricks-uploader:v1.18.0
+        entrypoint: ["/bin/bash"]
+        parameters:
+          - -c
+          - |
+            echo "=== UPLOADER PERSPECTIVE DEBUGGING ==="
+            echo "STATE_DIR environment: ${STATE_DIR}"
+            echo "Current working directory: $(pwd)"
+            echo ""
+            echo "=== State directory from uploader ==="
+            ls -la /bacalhau_data/state/ 2>/dev/null || echo "No state directory"
+            echo ""
+            echo "=== Pipeline database path uploader will use ==="
+            python3 -c "
+            import os
+            from pathlib import Path
+            state_dir = os.getenv('STATE_DIR', '/bacalhau_data/state')
+            pipeline_db_path = Path(state_dir) / 'pipeline_config.db'
+            print(f'Pipeline DB path: {pipeline_db_path}')
+            print(f'File exists: {pipeline_db_path.exists()}')
+            if pipeline_db_path.exists():
+                import sqlite3
+                conn = sqlite3.connect(str(pipeline_db_path))
+                cursor = conn.cursor()
+                try:
+                    cursor.execute('SELECT name FROM sqlite_master WHERE type=\"table\"')
+                    tables = cursor.fetchall()
+                    print(f'Tables: {tables}')
+                    if any('config' in str(table) for table in tables):
+                        cursor.execute('SELECT key, value FROM config')
+                        results = cursor.fetchall()
+                        print('Config table contents:')
+                        for key, value in results:
+                            print(f'  {key}: {value}')
+                    else:
+                        print('No config table found')
+                except Exception as e:
+                    print(f'Error reading database: {e}')
+                finally:
+                    conn.close()
+            "
+            echo ""
+            echo "=== Test pipeline manager from uploader container ==="
+            cd /app && python3 -c "
+            import sys
+            import os
+            from pathlib import Path
+            sys.path.append('/app')
+            from pipeline_manager import PipelineManager
+            
+            state_dir = os.getenv('STATE_DIR', '/bacalhau_data/state')
+            pipeline_db_path = Path(state_dir) / 'pipeline_config.db'
+            
+            print(f'Initializing PipelineManager with: {pipeline_db_path}')
+            try:
+                pm = PipelineManager(str(pipeline_db_path))
+                config = pm.get_current_config()
+                print(f'Pipeline Manager says: {config}')
+            except Exception as e:
+                print(f'Error with PipelineManager: {e}')
+            "
+    env:
+      AWS_REGION: "us-west-2"
+      SQLITE_DB_PATH: "/data/sensor_data/sensor_data.db"
+      AWS_CREDENTIALS_DIR: "/bacalhau_data/credentials"
+      STATE_DIR: "/bacalhau_data/state"
+    inputSources:
+      - source:
+          type: localDirectory
+          params:
+            sourcePath: /opt/sensor/data
+            readWrite: false
+        target: /data/sensor_data
+      - source:
+          type: localDirectory
+          params:
+            sourcePath: /bacalhau_data
+            readWrite: true
+        target: /bacalhau_data
+
+    timeouts:
+      queueTimeout: 300

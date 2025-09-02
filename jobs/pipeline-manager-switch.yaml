@@ -1,0 +1,23 @@
+name: pipeline-manager-switch-{{ .pipeline_type }}
+type: ops
+
+tasks:
+  - name: switch-to-{{ .pipeline_type }}
+    engine:
+      type: docker
+      params:
+        image: ghcr.io/bacalhau-project/pipeline-manager:v1.21.0
+        entrypoint: ["/bin/bash"]
+        parameters:
+          - -c
+          - "mkdir -p /bacalhau_data/state && python /app/pipeline_controller.py --config-db /bacalhau_data/state/pipeline_config.db set {{ .pipeline_type }}"
+    inputSources:
+      - source:
+          type: localDirectory
+          params:
+            sourcePath: /bacalhau_data
+            readWrite: true
+        target: /bacalhau_data
+
+    timeouts:
+      queueTimeout: 300

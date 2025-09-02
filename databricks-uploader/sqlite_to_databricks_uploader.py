@@ -66,8 +66,9 @@ class SQLiteToS3Uploader:
                 self.config["s3_configuration"] = {}
             self.config["s3_configuration"]["credentials_dir"] = creds_dir
 
-        # Setup state management directory
-        self.state_dir = Path(self.config.get("state_dir", "state"))
+        # Setup state management directory (configurable via env var, config, or default)
+        state_dir_path = os.getenv("STATE_DIR") or self.config.get("state_dir") or "state"
+        self.state_dir = Path(state_dir_path)
         self.state_file = self.state_dir / "s3-uploader" / "upload_state.json"
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -106,7 +107,9 @@ class SQLiteToS3Uploader:
         print("🚀 DATABRICKS S3 UPLOADER - STARTUP INFORMATION")
         print("=" * 60)
         print(f"📁 Configuration file: {Path(self.config_path).absolute()}")
-        print(f"📂 State directory: {self.state_dir.absolute()}")
+        print(
+            f"📂 State directory: {self.state_dir.absolute()} (from {'STATE_DIR env' if os.getenv('STATE_DIR') else 'config'})"
+        )
         print(f"📄 State file: {self.state_file.absolute()}")
         print(f"🗄️  SQLite database: {Path(self.config['sqlite']).absolute()}")
         print(f"📊 SQLite table: {self.config.get('sqlite_table', 'sensor_readings')}")

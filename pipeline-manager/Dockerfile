@@ -4,13 +4,14 @@ FROM python:3.11-slim
 RUN pip install --no-cache-dir \
     click \
     tabulate \
-    python-dateutil
+    python-dateutil \
+    rich
 
 # Create app directory
 WORKDIR /app
 
 # Copy the pipeline controller script and dependencies
-COPY pipeline_controller.py config_db.py ./
+COPY pipeline_controller.py config_db.py sensor_db_reader.py ./
 
 # Make the script executable
 RUN chmod +x pipeline_controller.py

@@ -25,12 +25,18 @@ from sensor_db_reader import SensorDatabaseReader, SensorReaderConfig
 
 
 class PipelineType(Enum):
-    """Pipeline type enumeration."""
+    """Pipeline type enumeration - matches databricks-uploader supported types."""
 
+    # Primary pipeline types
     RAW = "raw"
+    INGESTION = "ingestion"
+    VALIDATED = "validated"
+    SCHEMATIZED = "schematized"
+    ENRICHED = "enriched"
     FILTERED = "filtered"
     AGGREGATED = "aggregated"
     ANOMALY = "anomaly"
+    ANOMALIES = "anomalies"
 
 
 class PipelineController:

@@ -47,7 +47,7 @@ bld/
 
 # Environment and configuration files
 .env
-.env.*
+!.env.example
 .envrc
 *.env.production
 *.env.local
@@ -251,3 +251,5 @@ data-engineering/bigquery-with-bacalhau/logs/access.log
 
 # Large data files
 todo/socat/input/sst.mnmean.nc
+
+LLM.txt

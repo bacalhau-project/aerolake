@@ -138,15 +138,12 @@ def query_unity_catalog():
         print(f"{Fore.RED}❌ Invalid or missing DATABRICKS_HTTP_PATH{Style.RESET_ALL}")
         sys.exit(1)
 
-    # Get database/schema
-    database = os.getenv("DATABRICKS_DATABASE", "sensor_readings")
-    if not database:
-        print(f"{Fore.RED}❌ Missing DATABRICKS_DATABASE{Style.RESET_ALL}")
-        sys.exit(1)
+    # Get catalog and schema from environment
+    catalog = os.getenv("DATABRICKS_CATALOG", "expanso_databricks_workspace")
+    schema = os.getenv("DATABRICKS_SCHEMA", "sensor_readings")
 
-    # Catalog is fixed, schema is from environment
-    catalog = "expanso_databricks_workspace"
-    schema = database
+    # Legacy database name for display purposes only
+    database = os.getenv("DATABRICKS_DATABASE", schema)
 
     if not all([host, token, warehouse_id]):
         print(f"{Fore.RED}❌ Missing Databricks credentials in .env file{Style.RESET_ALL}")
@@ -529,9 +526,20 @@ def query_s3_buckets():
 
     # Try to load from credentials file first
     creds_file = Path("credentials/expanso-s3-env.sh")
+    spot_creds_file = Path("spot/instance-files/etc/aws/credentials/expanso-s3-env.sh")
+
+    # Check local credentials first, then spot instance credentials
     if creds_file.exists():
         print(f"📁 Loading credentials from: {creds_file}")
-        with open(creds_file, "r") as f:
+        selected_file = creds_file
+    elif spot_creds_file.exists():
+        print(f"📁 Loading credentials from: {spot_creds_file}")
+        selected_file = spot_creds_file
+    else:
+        selected_file = None
+
+    if selected_file:
+        with open(selected_file, "r") as f:
             for line in f:
                 if line.startswith("export AWS_ACCESS_KEY_ID="):
                     aws_access_key = line.split("=", 1)[1].strip().strip("'\"")
@@ -548,7 +556,9 @@ def query_s3_buckets():
     if not aws_access_key or not aws_secret_key:
         print("⚠️  No AWS credentials found. Skipping S3 query.")
         print("   Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY or")
-        print("   create credentials/expanso-s3-env.sh")
+        print(
+            "   create credentials/expanso-s3-env.sh or use spot/instance-files/etc/aws/credentials/expanso-s3-env.sh"
+        )
         return {"icon": "❌", "text": "No credentials", "latest": "N/A"}
 
     # Create S3 client
