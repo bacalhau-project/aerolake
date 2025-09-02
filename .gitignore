@@ -40,6 +40,10 @@ bld/
 *.sln.docstates
 .idea/
 .aider*
+.cursor/
+.ruff_cache/
+.mypy_cache/
+.specstory/
 
 # Environment and configuration files
 .env
