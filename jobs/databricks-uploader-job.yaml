@@ -11,7 +11,6 @@ tasks:
         parameters:
           - --config
           - /app/databricks-s3-uploader-config.yaml
-          - --once
     env:
       AWS_REGION: "us-west-2"
       SQLITE_DB_PATH: "/data/sensor_data/sensor_data.db"
