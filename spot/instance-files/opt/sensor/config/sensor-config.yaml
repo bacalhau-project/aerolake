@@ -1,0 +1,13 @@
+# Sensor Configuration
+sensor:
+  update_interval: 30  # seconds
+  data_points_per_batch: 10
+  output_format: json
+
+database:
+  path: /opt/sensor/data/sensor_readings.db
+  backup_interval: 300  # seconds
+
+logging:
+  level: INFO
+  file: /opt/sensor/logs/sensor.log

@@ -157,6 +157,10 @@ spot/instance-files/etc/aws/credentials/expanso-*
 !spot/instance-files/etc/aws/credentials/README.md
 !spot/instance-files/etc/aws/credentials/*.sample
 
+# Bacalhau real credentials - exclude real files but keep placeholders for deployment
+# These files need to exist for deployment to work, but contain placeholder values
+# Real values should be injected during deployment process
+
 # Bacalhau data with credentials
 **/bacalhau_data/credentials/
 !**/bacalhau_data/credentials/.keep
