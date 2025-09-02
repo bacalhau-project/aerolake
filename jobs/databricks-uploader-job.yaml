@@ -1,0 +1,35 @@
+name: databricks-uploader
+type: batch
+count: 3
+
+tasks:
+  - name: upload-to-s3
+    engine:
+      type: docker
+      params:
+        image: ghcr.io/bacalhau-project/databricks-uploader:v1.16.0
+        parameters:
+          - --config
+          - /app/databricks-s3-uploader-config.yaml
+          - --once
+    env:
+      AWS_REGION: "us-west-2"
+      SQLITE_DB_PATH: "/data/sensor_data/sensor_data.db"
+      AWS_CREDENTIALS_DIR: "/bacalhau_data/credentials"
+    inputSources:
+      # Mount the SQLite database directory
+      - source:
+          type: localDirectory
+          params:
+            sourcePath: /opt/sensor/data
+            readWrite: false
+        target: /data/sensor_data
+      - source:
+          type: localDirectory
+          params:
+            sourcePath: /bacalhau_data
+            readWrite: false
+        target: /bacalhau_data
+
+    timeouts:
+      queueTimeout: 3600

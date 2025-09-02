@@ -1,0 +1,22 @@
+{
+  "instances": [
+    {
+      "id": "i-1234567890abcdef0",
+      "name": "bacalhau-node-1",
+      "ip": "10.0.1.100",
+      "region": "us-west-2",
+      "zone": "us-west-2a",
+      "type": "t3.medium",
+      "state": "running"
+    },
+    {
+      "id": "i-0987654321fedcba0", 
+      "name": "bacalhau-node-2",
+      "ip": "10.0.1.101",
+      "region": "us-west-2",
+      "zone": "us-west-2b",
+      "type": "t3.medium",
+      "state": "running"
+    }
+  ]
+}
