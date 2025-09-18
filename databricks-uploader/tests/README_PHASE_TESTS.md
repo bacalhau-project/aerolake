@@ -5,8 +5,10 @@ This directory contains lightweight unit tests for validating the databricks upl
 ## 📁 Test Files
 
 ### Core Test Files
-- **`test_phase_logic_simple.py`** - Lightweight tests for pipeline phase logic and bucket routing
-- **`test_pipeline_state_machine.py`** - Tests pipeline configuration management
+- **`test_phase_logic_simple.py`** - Lightweight tests for pipeline phase logic and bucket routing (14 tests)
+- **`test_pipeline_state_machine.py`** - Tests pipeline configuration management (13 tests)
+- **`test_schema_violations.py`** - Comprehensive schema validation and anomaly detection tests (18 tests)
+- **`test_metadata_injection.py`** - Tests metadata injection during schematization and validation (13 tests)
 - **`run_phase_tests.py`** - Test runner with reporting capabilities
 - **`validate_phase_tests.py`** - Test structure validation
 - **`test_phase_routing.py`** - Advanced tests with full uploader mocking (experimental)

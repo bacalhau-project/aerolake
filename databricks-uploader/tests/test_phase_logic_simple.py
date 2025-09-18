@@ -104,6 +104,17 @@ class MockUploader:
         temp = record.get("temperature", 0)
         humidity = record.get("humidity", 0)
 
+        # Handle invalid data types and None values
+        try:
+            temp = float(temp) if temp is not None else 0.0
+        except (ValueError, TypeError):
+            temp = 0.0
+
+        try:
+            humidity = float(humidity) if humidity is not None else 0.0
+        except (ValueError, TypeError):
+            humidity = 0.0
+
         # Simple validation rules
         if temp < -20 or temp > 60:
             return False
