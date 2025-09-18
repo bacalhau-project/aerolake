@@ -322,4 +322,4 @@ You know the pipeline is working when:
 - ✅ Unity Catalog tables are populated
 - ✅ Anomalies are being detected and routed
 - ✅ AutoLoader is processing files continuously
-- ✅ No errors in Databricks notebook execution
+- ✅ No errors in Databricks notebook execution 
