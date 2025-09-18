@@ -789,26 +789,26 @@ class SQLiteToS3Uploader:
                 result = self._upload_to_s3(data, bucket, dry_run)
 
                 if result["success"] and not dry_run:
-            # Update state with last timestamp
-            timestamp_col = self.config["timestamp_col"]
-            last_record = data[-1]
-            new_timestamp = last_record.get(timestamp_col)
+                    # Update state with last timestamp
+                    timestamp_col = self.config["timestamp_col"]
+                    last_record = data[-1]
+                    new_timestamp = last_record.get(timestamp_col)
 
-            state["last_timestamp"] = new_timestamp
-            state["last_upload"] = new_timestamp  # Use actual data timestamp, not current time
-            state["records_uploaded"] = state.get("records_uploaded", 0) + len(data)
-            state["last_pipeline_type"] = self.current_pipeline_type
-            state["last_job_id"] = result["job_id"]
+                    state["last_timestamp"] = new_timestamp
+                    state["last_upload"] = new_timestamp  # Use actual data timestamp, not current time
+                    state["records_uploaded"] = state.get("records_uploaded", 0) + len(data)
+                    state["last_pipeline_type"] = self.current_pipeline_type
+                    state["last_job_id"] = result["job_id"]
 
-            self._save_state(state)
+                    self._save_state(state)
 
-            # Record execution in pipeline manager with metadata
-            self.pipeline_manager.record_execution(
-                pipeline_type=self.current_pipeline_type,
-                records_processed=len(data),
-                s3_locations=[f"s3://{bucket}/{result['key']}"],
-                job_id=result["job_id"],
-            )
+                # Record execution in pipeline manager with metadata
+                self.pipeline_manager.record_execution(
+                    pipeline_type=self.current_pipeline_type,
+                    records_processed=len(data),
+                    s3_locations=[f"s3://{bucket}/{result['key']}"],
+                    job_id=result["job_id"],
+                )
 
             # Print upload summary
             print("\n✅ UPLOAD COMPLETED SUCCESSFULLY")
