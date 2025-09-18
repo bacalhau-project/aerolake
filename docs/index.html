@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aerolake - Wind Turbine Data Pipeline</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --bg: #ffffff;
+            --bg-secondary: #f8fafc;
+            --border: #e2e8f0;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg-secondary);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 60px 20px;
+            background: var(--bg);
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            color: var(--text);
+        }
+        
+        .subtitle {
+            font-size: 1.3em;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+        }
+        
+        .links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .link-card {
+            background: var(--bg);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .link-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .link-card h2 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            font-size: 1.5em;
+        }
+        
+        .link-card p {
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        
+        .features {
+            background: var(--bg);
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .features h2 {
+            margin-bottom: 30px;
+            color: var(--text);
+            font-size: 2em;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+        }
+        
+        .feature {
+            padding: 20px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .feature h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        
+        .feature p {
+            color: var(--text-muted);
+            font-size: 0.95em;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+            font-size: 0.9em;
+        }
+        
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+            
+            .subtitle {
+                font-size: 1.1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌬️ Aerolake</h1>
+            <p class="subtitle">Wind Turbine Environmental Data Pipeline</p>
+            <p style="color: var(--text-muted); max-width: 600px; margin: 0 auto;">
+                A production-ready data pipeline for processing wind turbine sensor data using 
+                Databricks, Delta Lake, and Bacalhau for distributed computing.
+            </p>
+        </div>
+        
+        <div class="links">
+            <a href="schemas/viewer.html" class="link-card">
+                <h2>📋 Schema Viewer</h2>
+                <p>Interactive viewer for the wind turbine data schema with detailed field descriptions and validation rules.</p>
+            </a>
+            
+            <a href="schemas/wind-turbine-v1.json" class="link-card">
+                <h2>📄 JSON Schema</h2>
+                <p>Download the complete JSON Schema specification for wind turbine sensor data format.</p>
+            </a>
+            
+            <a href="https://github.com/aerolake/databricks-wind-turbines" class="link-card">
+                <h2>💻 Source Code</h2>
+                <p>View the complete source code, documentation, and contribute on GitHub.</p>
+            </a>
+            
+            <a href="schemas/" class="link-card">
+                <h2>📁 Schema Documentation</h2>
+                <p>Browse all available schema versions and documentation files.</p>
+            </a>
+        </div>
+        
+        <div class="features">
+            <h2>Key Features</h2>
+            <div class="feature-grid">
+                <div class="feature">
+                    <h3>Real-time Processing</h3>
+                    <p>Stream processing of sensor data with automatic schema validation and transformation.</p>
+                </div>
+                
+                <div class="feature">
+                    <h3>Databricks Integration</h3>
+                    <p>Seamless integration with Databricks Unity Catalog and Delta Lake for scalable analytics.</p>
+                </div>
+                
+                <div class="feature">
+                    <h3>Distributed Computing</h3>
+                    <p>Leverages Bacalhau for distributed data processing across edge locations.</p>
+                </div>
+                
+                <div class="feature">
+                    <h3>Schema Validation</h3>
+                    <p>Comprehensive JSON Schema validation ensuring data quality and consistency.</p>
+                </div>
+                
+                <div class="feature">
+                    <h3>Auto-scaling Pipeline</h3>
+                    <p>Automatic scaling based on data volume with retry mechanisms and error handling.</p>
+                </div>
+                
+                <div class="feature">
+                    <h3>Production Ready</h3>
+                    <p>Battle-tested pipeline with monitoring, logging, and alerting capabilities.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>
+                Aerolake Wind Turbine Data Pipeline | 
+                <a href="https://github.com/aerolake/databricks-wind-turbines">GitHub</a> | 
+                <a href="https://databricks.com">Powered by Databricks</a>
+            </p>
+            <p style="margin-top: 10px;">
+                © 2024 Aerolake Project
+            </p>
+        </div>
+    </div>
+</body>
+</html>
