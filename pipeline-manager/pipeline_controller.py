@@ -74,6 +74,8 @@ class PipelineController:
         """Initialize the pipeline configuration table if it doesn't exist."""
         with sqlite3.connect(self.config_db_path, timeout=30.0) as conn:
             conn.execute("PRAGMA journal_mode=WAL")  # Enable WAL mode for better concurrency
+
+            # Create table if it doesn't exist
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS pipeline_config (
                     id INTEGER PRIMARY KEY,
@@ -84,6 +86,25 @@ class PipelineController:
                     is_active INTEGER DEFAULT 1
                 )
             """)
+
+            # Check and add missing columns for backward compatibility
+            cursor = conn.execute("PRAGMA table_info(pipeline_config)")
+            columns = {row[1] for row in cursor.fetchall()}
+
+            # Add missing columns if they don't exist
+            if "created_by" not in columns:
+                conn.execute("ALTER TABLE pipeline_config ADD COLUMN created_by TEXT")
+                self.console.print("[yellow]Added missing column: created_by[/yellow]")
+
+            if "reason" not in columns:
+                conn.execute("ALTER TABLE pipeline_config ADD COLUMN reason TEXT")
+                self.console.print("[yellow]Added missing column: reason[/yellow]")
+
+            if "is_active" not in columns:
+                conn.execute("ALTER TABLE pipeline_config ADD COLUMN is_active INTEGER DEFAULT 1")
+                # Set all existing records to active since we didn't have this field before
+                conn.execute("UPDATE pipeline_config SET is_active = 1 WHERE is_active IS NULL")
+                self.console.print("[yellow]Added missing column: is_active[/yellow]")
 
             # Create index for faster queries
             conn.execute("""

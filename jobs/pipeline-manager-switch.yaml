@@ -1,12 +1,12 @@
 name: pipeline-manager-switch-{{ .pipeline_type }}
-type: ops
+type: daemon
 
 tasks:
   - name: switch-to-{{ .pipeline_type }}
     engine:
       type: docker
       params:
-        image: ghcr.io/bacalhau-project/pipeline-manager:v1.21.0
+        image: ghcr.io/bacalhau-project/pipeline-manager:latest
         entrypoint: ["/bin/bash"]
         parameters:
           - -c

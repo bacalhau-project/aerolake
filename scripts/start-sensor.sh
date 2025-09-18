@@ -6,6 +6,9 @@
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Set the sample-sensor directory relative to current working directory
+SENSOR_DIR="./sample-sensor"
+
 # Function to print Docker image version info
 print_docker_version_info() {
     local image="$1"
@@ -40,6 +43,13 @@ print_docker_version_info() {
     echo ""
 }
 
+# Check if sample-sensor directory exists
+if [ ! -d "$SENSOR_DIR" ]; then
+    echo -e "${BLUE}[ERROR]${NC} Directory '$SENSOR_DIR' not found relative to current directory: $(pwd)"
+    echo -e "${BLUE}[INFO]${NC} Please ensure you run this script from the project root or where sample-sensor directory exists"
+    exit 1
+fi
+
 # Stop any existing sensor container
 docker stop sensor-log-generator 2>/dev/null || true
 docker rm sensor-log-generator 2>/dev/null || true
@@ -52,8 +62,8 @@ echo "Docker command to run sensor:"
 echo ""
 echo "docker run --rm \\"
 echo "  --name sensor-log-generator \\"
-echo "  -v \"$(pwd)/sample-sensor/data\":/app/data \\"
-echo "  -v \"$(pwd)/sample-sensor\":/app/config \\"
+echo "  -v \"$(pwd)/${SENSOR_DIR}/data\":/app/data \\"
+echo "  -v \"$(pwd)/${SENSOR_DIR}\":/app/config \\"
 echo "  -e CONFIG_FILE=/app/config/sensor-config.yaml \\"
 echo "  -e IDENTITY_FILE=/app/config/identity.json \\"
 echo "  -p 8080:8080 \\"
@@ -63,8 +73,8 @@ echo ""
 # Run the sensor container
 docker run --rm \
   --name sensor-log-generator \
-  -v "$(pwd)/sample-sensor/data":/app/data \
-  -v "$(pwd)/sample-sensor":/app/config \
+  -v "$(pwd)/${SENSOR_DIR}/data":/app/data \
+  -v "$(pwd)/${SENSOR_DIR}":/app/config \
   -e CONFIG_FILE=/app/config/sensor-config.yaml \
   -e IDENTITY_FILE=/app/config/identity.json \
   -p 8080:8080 \

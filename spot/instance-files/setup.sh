@@ -231,6 +231,22 @@ if [ -x /usr/local/bin/generate_node_identity.py ]; then
     sudo -u ubuntu /usr/local/bin/generate_node_identity.py -o /opt/sensor/config/node_identity.json
 fi
 
+# Generate Bacalhau labels from EC2 metadata and sensor identity
+if [ -x /usr/local/bin/generate_bacalhau_labels.sh ]; then
+    echo "Generating Bacalhau node labels..."
+    BACALHAU_LABELS=$(/usr/local/bin/generate_bacalhau_labels.sh)
+    if [ -n "$BACALHAU_LABELS" ]; then
+        echo "Generated labels in YAML format"
+        # Add labels to the Bacalhau config (already in YAML format)
+        echo "" | sudo tee -a /etc/bacalhau/config.yaml
+        echo "# Node Labels from EC2 metadata and sensor identity" | sudo tee -a /etc/bacalhau/config.yaml
+        echo "$BACALHAU_LABELS" | sudo tee -a /etc/bacalhau/config.yaml
+        echo "Successfully added labels to Bacalhau config"
+    else
+        echo "Warning: No labels generated"
+    fi
+fi
+
 # Start services (Docker should be ready now)
 echo "Starting services..."
 sudo systemctl start bacalhau.service 2>/dev/null && echo "Started bacalhau.service" || echo "Could not start bacalhau.service"

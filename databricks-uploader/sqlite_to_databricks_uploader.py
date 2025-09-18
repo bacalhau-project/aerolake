@@ -81,11 +81,12 @@ class SQLiteToS3Uploader:
         self.current_pipeline_type = pipeline_config["type"]
 
         # Pipeline type to bucket mapping
+        # SPLIT means the data will be split between valid/invalid buckets
         self.pipeline_bucket_map = {
             "raw": "ingestion",
             "ingestion": "ingestion",
-            "schematized": "validated",
-            "validated": "validated",
+            "schematized": "schematized",  # Goes to schematized bucket (all valid since no validation)
+            "validated": "SPLIT",  # Split between validated/anomalies based on validation
             "anomaly": "anomalies",
             "anomalies": "anomalies",
             "filtered": "enriched",
@@ -475,7 +476,13 @@ class SQLiteToS3Uploader:
         self, data: List[Dict[str, Any]]
     ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         """
-        Validate data and split into valid/invalid streams.
+        Validate data and split into valid/invalid streams based on pipeline type.
+
+        Pipeline behaviors:
+        - raw: No processing, pass through as-is
+        - schematized: Convert flat to JSON with metadata (no validation)
+        - validated: Fetch external schema and validate
+        - Others: Pass through as-is
 
         Returns:
             Tuple of (valid_records, invalid_records)
@@ -483,22 +490,45 @@ class SQLiteToS3Uploader:
         valid_records = []
         invalid_records = []
 
-        for record in data:
-            # Transform record for wind turbine format if needed
-            if self.current_pipeline_type == "schematized":
-                # Map SQLite fields to wind turbine schema
-                turbine_record = self._map_to_turbine_schema(record)
-                is_valid, error_msg = validate_sensor_data(turbine_record)
+        # Import metadata functions if needed
+        if self.current_pipeline_type in ["schematized", "validated"]:
+            from pipeline_metadata import create_pipeline_metadata, fetch_external_schema
+            import jsonschema
 
-                if is_valid:
+        for record in data:
+            if self.current_pipeline_type == "schematized":
+                # ONLY transform to JSON schema format with metadata, NO validation
+                turbine_record = self._map_to_turbine_schema(record)
+                # Add pipeline metadata for audit trail
+                turbine_record["pipeline_metadata"] = create_pipeline_metadata(
+                    self.current_pipeline_type, self.node_id, self.config
+                )
+                valid_records.append(turbine_record)
+
+            elif self.current_pipeline_type == "validated":
+                # Fetch external schema and validate
+                turbine_record = self._map_to_turbine_schema(record)
+                turbine_record["pipeline_metadata"] = create_pipeline_metadata(
+                    self.current_pipeline_type, self.node_id, self.config
+                )
+
+                # Fetch and validate against external schema
+                try:
+                    schema = fetch_external_schema(self.config.get("schema_url"))
+                    jsonschema.validate(turbine_record, schema)
                     valid_records.append(turbine_record)
-                else:
-                    # Add error info to record
-                    turbine_record["validation_error"] = error_msg
-                    turbine_record["original_record"] = record
+                except jsonschema.ValidationError as e:
+                    # Add validation error info
+                    turbine_record["validation_error"] = str(e.message)
+                    turbine_record["validation_path"] = list(e.path)
                     invalid_records.append(turbine_record)
+                except Exception as e:
+                    # Other errors also route to invalid
+                    turbine_record["validation_error"] = f"Validation failed: {str(e)}"
+                    invalid_records.append(turbine_record)
+
             else:
-                # For non-schematized pipelines, all records are "valid"
+                # For other pipelines (raw, aggregated, etc), pass through as-is
                 valid_records.append(record)
 
         return valid_records, invalid_records
@@ -686,18 +716,22 @@ class SQLiteToS3Uploader:
 
         print(f"📊 Found {len(data)} new records")
 
-        # Check if we're in schematized pipeline (triggers validation)
-        if self.current_pipeline_type == "schematized":
-            print(f"🔬 Running validation for schematized pipeline...")
+        # Check if pipeline type requires validation/splitting
+        if self.current_pipeline_type in ["schematized", "validated"]:
+            if self.current_pipeline_type == "validated":
+                print(f"🔬 Fetching external schema and validating...")
+            else:
+                print(f"📝 Converting to JSON schema format with metadata...")
 
-            # Validate and split data
+            # Process and potentially split data
             valid_data, invalid_data = self._validate_and_split_data(data)
 
             print(f"   ✅ Valid records: {len(valid_data)}")
-            print(f"   ⚠️  Invalid records: {len(invalid_data)}")
+            if invalid_data:
+                print(f"   ⚠️  Invalid records: {len(invalid_data)}")
 
             if valid_data or invalid_data:
-                # Upload both streams in parallel
+                # Upload both streams in parallel (if split) or just valid
                 results = self._upload_parallel(valid_data, invalid_data, dry_run)
 
                 # Update state if successful
@@ -727,31 +761,34 @@ class SQLiteToS3Uploader:
                         job_id=results.get("valid", {}).get("job_id", "unknown"),
                     )
         else:
-            # Regular single-stream upload for non-schematized pipelines
+            # Regular single-stream upload for non-splitting pipelines
             print(f"📤 Standard upload for {self.current_pipeline_type} pipeline")
 
-        # Get bucket based on current pipeline type
-        bucket_key = self.pipeline_bucket_map.get(self.current_pipeline_type, "ingestion")
-        bucket = self.config["s3_configuration"]["buckets"].get(bucket_key)
+            # Get bucket based on current pipeline type
+            bucket_key = self.pipeline_bucket_map.get(self.current_pipeline_type, "ingestion")
+            
+            # For non-splitting pipelines, upload to designated bucket
+            if bucket_key != "SPLIT":
+                bucket = self.config["s3_configuration"]["buckets"].get(bucket_key)
 
-        if not bucket:
-            print(f"❌ No bucket configured for pipeline type: {self.current_pipeline_type}")
-            return
+                if not bucket:
+                    print(f"❌ No bucket configured for pipeline type: {self.current_pipeline_type}")
+                    return
 
-        # Print detailed upload information
-        print("\n" + "-" * 60)
-        print("📤 UPLOAD OPERATION")
-        print(f"   Pipeline Type: {self.current_pipeline_type}")
-        print(f"   Target Bucket: {bucket_key} → {bucket}")
-        print(f"   Records Count: {len(data)}")
-        print(
-            f"   Time Range: {data[0].get(self.config['timestamp_col'])} to {data[-1].get(self.config['timestamp_col'])}"
-        )
-        print("-" * 60)
+                # Print detailed upload information
+                print("\n" + "-" * 60)
+                print("📤 UPLOAD OPERATION")
+                print(f"   Pipeline Type: {self.current_pipeline_type}")
+                print(f"   Target Bucket: {bucket_key} → {bucket}")
+                print(f"   Records Count: {len(data)}")
+                print(
+                    f"   Time Range: {data[0].get(self.config['timestamp_col'])} to {data[-1].get(self.config['timestamp_col'])}"
+                )
+                print("-" * 60)
 
-        result = self._upload_to_s3(data, bucket, dry_run)
+                result = self._upload_to_s3(data, bucket, dry_run)
 
-        if result["success"] and not dry_run:
+                if result["success"] and not dry_run:
             # Update state with last timestamp
             timestamp_col = self.config["timestamp_col"]
             last_record = data[-1]
