@@ -33,7 +33,8 @@ def run_tests():
         "test_phase_logic_simple.py",
         "test_pipeline_state_machine.py",
         "test_schema_violations.py",
-        "test_metadata_injection.py"
+        "test_metadata_injection.py",
+        "test_unity_catalog_mapping.py"
     ]
 
     console.print(Panel.fit(

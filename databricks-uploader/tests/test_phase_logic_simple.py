@@ -83,45 +83,31 @@ class MockUploader:
         return valid_records, invalid_records
 
     def _mock_transform_to_turbine_schema(self, record):
-        """Mock transformation to turbine schema."""
-        return {
-            "timestamp": record.get("timestamp"),
+        """Simple mock transformation - just add required fields for testing."""
+        transformed = record.copy()
+        transformed.update({
             "turbine_id": f"turbine_{record.get('id', '001')}",
-            "site_id": "test_site",
-            "temperature": record.get("temperature"),
-            "humidity": record.get("humidity"),
-            "pressure": record.get("pressure", 1013.25),
-            "wind_speed": 15.0,
-            "power_output": 1500.0,
             "pipeline_metadata": {
                 "stage": self.current_pipeline_type,
-                "processed_at": "2024-01-15T10:30:00Z"
+                "pipeline_processed_at": "2024-01-15T10:30:00Z"
             }
-        }
+        })
+        return transformed
 
     def _mock_validate_record(self, record):
-        """Mock validation with simple rules that match our test data."""
+        """Simple mock validation for testing."""
+        # Get values, default to 0 for any non-numeric types
         temp = record.get("temperature", 0)
         humidity = record.get("humidity", 0)
 
-        # Handle invalid data types and None values
-        try:
-            temp = float(temp) if temp is not None else 0.0
-        except (ValueError, TypeError):
-            temp = 0.0
+        # Convert to float, default to 0 for invalid types
+        if not isinstance(temp, (int, float)) or temp is None:
+            temp = 0
+        if not isinstance(humidity, (int, float)) or humidity is None:
+            humidity = 0
 
-        try:
-            humidity = float(humidity) if humidity is not None else 0.0
-        except (ValueError, TypeError):
-            humidity = 0.0
-
-        # Simple validation rules
-        if temp < -20 or temp > 60:
-            return False
-        if humidity < 0 or humidity > 100:
-            return False
-
-        return True
+        # Basic range validation
+        return -20 <= temp <= 60 and 0 <= humidity <= 100
 
 
 class TestPhaseLogicSimple:
@@ -177,7 +163,6 @@ class TestPhaseLogicSimple:
         # Check transformation occurred
         for record in valid:
             assert "turbine_id" in record
-            assert "wind_speed" in record
             assert "pipeline_metadata" in record
 
         # Check bucket mapping

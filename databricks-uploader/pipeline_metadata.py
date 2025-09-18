@@ -53,7 +53,7 @@ def create_pipeline_metadata(
     return {
         "pipeline_version": get_pipeline_version(),
         "pipeline_stage": pipeline_type,
-        "processing_timestamp": datetime.now(timezone.utc).isoformat(),
+        "pipeline_processed_at": datetime.now(timezone.utc).isoformat(),
         "git_sha": get_git_sha(),
         "node_id": node_id,
         "transformation_hash": generate_transformation_hash(pipeline_type, config),
