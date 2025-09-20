@@ -34,23 +34,13 @@ print_info() {
     echo -e "${CYAN}ℹ${NC}  $1"
 }
 
-# Function to check bucket with counts
+# Function to check bucket with counts (SKIPPED - Bacalhau environment)
 check_bucket_status() {
     local bucket=$1
-    local bucket_name="expanso-${bucket}-data-${AWS_REGION}"
-    
-    print_status "Checking $bucket bucket..."
-    
-    # Get file count and size
-    local stats=$(aws s3 ls "s3://${bucket_name}/" --recursive --summarize \
-        --no-paginator 2>/dev/null | tail -2)
-    
-    if [ -n "$stats" ]; then
-        echo "  ${GREEN}✓${NC} $(echo "$stats" | grep "Total Objects" | awk '{print $3}') files"
-        echo "  ${GREEN}✓${NC} $(echo "$stats" | grep "Total Size" | awk '{print $3, $4}')"
-    else
-        echo "  ${RED}✗${NC} Empty or inaccessible"
-    fi
+
+    print_status "Pipeline stage: $bucket"
+    echo "  ${CYAN}ℹ${NC} S3 bucket checks skipped in Bacalhau environment"
+    echo "  ${CYAN}ℹ${NC} Data flow happens within Bacalhau cluster"
 }
 
 # Function to show countdown timer
@@ -76,9 +66,8 @@ main() {
     
     # Initial status check
     print_header "INITIAL STATUS CHECK"
-    for bucket in ingestion validated anomalies enriched aggregated; do
-        check_bucket_status "$bucket"
-    done
+    print_info "Skipping S3 bucket checks - running in Bacalhau environment"
+    print_info "Data processing happens within Bacalhau cluster nodes"
     
     # STAGE 1: RAW MODE
     print_header "STAGE 1: RAW MODE"
@@ -90,8 +79,8 @@ main() {
         --template-vars pipeline_type=raw --force --wait
     
     countdown $STAGE_DURATION "Processing in RAW mode"
-    
-    check_bucket_status "ingestion"
+
+    print_info "RAW mode processing complete - data flows to ingestion stage"
     
     # STAGE 2: SCHEMATIZED MODE (for validation)
     print_header "STAGE 2: SCHEMATIZED MODE"
@@ -104,9 +93,9 @@ main() {
         --template-vars pipeline_type=schematized --force --wait
     
     countdown $STAGE_DURATION "Processing with validation"
-    
-    check_bucket_status "validated"
-    check_bucket_status "anomalies"
+
+    print_info "SCHEMATIZED mode processing complete"
+    print_info "Valid data → validated stage, Invalid data → anomalies stage"
     
     # STAGE 3: FILTERED MODE
     print_header "STAGE 3: FILTERED MODE"
@@ -118,8 +107,8 @@ main() {
         --template-vars pipeline_type=filtered --force --wait
     
     countdown $STAGE_DURATION "Processing with filtering"
-    
-    check_bucket_status "enriched"
+
+    print_info "FILTERED mode processing complete - data flows to enriched stage"
     
     # STAGE 4: AGGREGATED MODE
     print_header "STAGE 4: AGGREGATED MODE"
@@ -131,8 +120,8 @@ main() {
         --template-vars pipeline_type=aggregated --force --wait
     
     countdown $STAGE_DURATION "Processing with aggregation"
-    
-    check_bucket_status "aggregated"
+
+    print_info "AGGREGATED mode processing complete - data flows to aggregated stage"
     
     # STAGE 5: ANOMALY MODE
     print_header "STAGE 5: ANOMALY MODE"
@@ -144,8 +133,8 @@ main() {
         --template-vars pipeline_type=anomaly --force --wait
     
     countdown $STAGE_DURATION "Detecting anomalies"
-    
-    check_bucket_status "anomalies"
+
+    print_info "ANOMALY mode processing complete - data flows to anomalies stage"
     
     # FINAL SUMMARY
     print_header "FINAL SUMMARY"

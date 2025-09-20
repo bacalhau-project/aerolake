@@ -1,5 +1,5 @@
-name: pipeline-manager-switch-{{ .pipeline_type }}
-type: daemon
+name: pipeline-manager-{{ .pipeline_type }}
+type: ops
 
 tasks:
   - name: switch-to-{{ .pipeline_type }}
@@ -10,7 +10,7 @@ tasks:
         entrypoint: ["/bin/bash"]
         parameters:
           - -c
-          - "mkdir -p /bacalhau_data/state && python /app/pipeline_controller.py --config-db /bacalhau_data/state/pipeline_config.db set {{ .pipeline_type }}"
+          - "mkdir -p /bacalhau_data/state && python /app/pipeline_controller.py --config-db /bacalhau_data/state/pipeline_config.db set {{ .pipeline_type }} && exit 0"
     inputSources:
       - source:
           type: localDirectory

@@ -35,6 +35,8 @@ import threading
 import boto3
 import yaml
 from pydantic import ValidationError
+import requests
+import subprocess
 
 # Import pipeline manager and validation modules
 sys.path.append(str(Path(__file__).parent))
@@ -46,6 +48,66 @@ from sensor_db_reader import SensorDatabaseReader, SensorReaderConfig
 
 class SQLiteToS3Uploader:
     """Upload SQLite sensor data to S3 for Databricks, tracking state."""
+
+    def test_network_connectivity(self) -> Dict[str, bool]:
+        """Test network connectivity for debugging container networking issues."""
+        results = {}
+
+        print("🔍 Testing network connectivity...")
+
+        # Test DNS resolution
+        try:
+            socket.gethostbyname("aerolake.org")
+            results["dns_aerolake"] = True
+            print("✅ DNS resolution for aerolake.org: SUCCESS")
+        except Exception as e:
+            results["dns_aerolake"] = False
+            print(f"❌ DNS resolution for aerolake.org: FAILED - {e}")
+
+        # Test HTTP connectivity to schema endpoint
+        try:
+            response = requests.get("https://aerolake.org/schemas/wind-turbine-v1.json", timeout=10)
+            response.raise_for_status()
+            results["http_schema"] = True
+            print(f"✅ HTTP request to schema endpoint: SUCCESS (status: {response.status_code})")
+        except Exception as e:
+            results["http_schema"] = False
+            print(f"❌ HTTP request to schema endpoint: FAILED - {e}")
+
+        # Test general internet connectivity
+        try:
+            response = requests.get("https://httpbin.org/ip", timeout=5)
+            response.raise_for_status()
+            results["internet"] = True
+            print("✅ General internet connectivity: SUCCESS")
+        except Exception as e:
+            results["internet"] = False
+            print(f"❌ General internet connectivity: FAILED - {e}")
+
+        # Test basic DNS (Google)
+        try:
+            socket.gethostbyname("google.com")
+            results["dns_google"] = True
+            print("✅ DNS resolution for google.com: SUCCESS")
+        except Exception as e:
+            results["dns_google"] = False
+            print(f"❌ DNS resolution for google.com: FAILED - {e}")
+
+        # Test if curl is available as fallback
+        try:
+            result = subprocess.run(["curl", "--version"], capture_output=True, text=True, timeout=5)
+            results["curl_available"] = result.returncode == 0
+            print(f"✅ curl command available: {'YES' if results['curl_available'] else 'NO'}")
+        except Exception as e:
+            results["curl_available"] = False
+            print(f"❌ curl command: FAILED - {e}")
+
+        # Summary
+        success_count = sum(1 for v in results.values() if v)
+        total_count = len(results)
+        print(f"\n📊 Network connectivity summary: {success_count}/{total_count} tests passed")
+
+        return results
 
     def __init__(self, config_path: str, verbose: bool = False):
         """Initialize the uploader with configuration."""
@@ -856,6 +918,11 @@ def main():
         action="store_true",
         help="Show detailed error messages and stack traces",
     )
+    parser.add_argument(
+        "--test-network",
+        action="store_true",
+        help="Test network connectivity only and exit",
+    )
 
     args = parser.parse_args()
 
@@ -866,6 +933,21 @@ def main():
 
     # Create uploader
     uploader = SQLiteToS3Uploader(args.config, verbose=args.verbose)
+
+    # Test network connectivity for debugging
+    print("=" * 60)
+    print("🌐 NETWORK CONNECTIVITY TEST")
+    print("=" * 60)
+    network_results = uploader.test_network_connectivity()
+    print("=" * 60)
+
+    # If only testing network, exit here
+    if args.test_network:
+        success_count = sum(1 for v in network_results.values() if v)
+        total_count = len(network_results)
+        exit_code = 0 if success_count == total_count else 1
+        print(f"\n🏁 Network test complete. Exit code: {exit_code}")
+        sys.exit(exit_code)
 
     # Run
     if args.once or args.dry_run:

@@ -6,10 +6,12 @@ tasks:
     engine:
       type: docker
       params:
-        image: ghcr.io/bacalhau-project/databricks-uploader:v1.18.0
+        image: ghcr.io/bacalhau-project/databricks-uploader:v1.20.0
         parameters:
           - --config
           - /app/databricks-s3-uploader-config.yaml
+    network:
+      type: full
     env:
       AWS_REGION: "us-west-2"
       SQLITE_DB_PATH: "/data/sensor_data/sensor_data.db"
