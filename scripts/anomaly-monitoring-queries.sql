@@ -70,24 +70,24 @@ ORDER BY occurrence_count DESC;
 -- Calculates health scores for each turbine based on anomaly rates
 WITH turbine_stats AS (
   SELECT 
-    turbine_id,
+    sensor_id,
     COUNT(*) as total_readings,
     SUM(CASE WHEN validation_error IS NOT NULL THEN 1 ELSE 0 END) as anomaly_count
   FROM (
-    SELECT turbine_id, validation_error 
+    SELECT sensor_id, validation_error 
     FROM expanso_databricks_workspace.sensor_readings.sensor_readings_anomalies
     WHERE processing_timestamp >= current_timestamp() - INTERVAL 24 HOURS
     
     UNION ALL
     
-    SELECT turbine_id, NULL as validation_error
+    SELECT sensor_id, NULL as validation_error
     FROM expanso_databricks_workspace.sensor_readings.sensor_readings_validated
     WHERE processing_timestamp >= current_timestamp() - INTERVAL 24 HOURS
   )
-  GROUP BY turbine_id
+  GROUP BY sensor_id
 )
 SELECT 
-  turbine_id,
+  sensor_id,
   total_readings,
   anomaly_count,
   ROUND(100.0 * (total_readings - anomaly_count) / NULLIF(total_readings, 0), 2) as health_score,
@@ -109,15 +109,15 @@ SELECT
   COUNT(*) as total_records,
   SUM(CASE WHEN source = 'anomaly' THEN 1 ELSE 0 END) as anomaly_count,
   ROUND(100.0 * SUM(CASE WHEN source = 'anomaly' THEN 1 ELSE 0 END) / COUNT(*), 2) as anomaly_rate,
-  COUNT(DISTINCT turbine_id) as turbine_count
+  COUNT(DISTINCT sensor_id) as turbine_count
 FROM (
-  SELECT site_id, turbine_id, 'anomaly' as source
+  SELECT site_id, sensor_id, 'anomaly' as source
   FROM expanso_databricks_workspace.sensor_readings.sensor_readings_anomalies
   WHERE processing_timestamp >= current_timestamp() - INTERVAL 7 DAYS
   
   UNION ALL
   
-  SELECT site_id, turbine_id, 'valid' as source
+  SELECT site_id, sensor_id, 'valid' as source
   FROM expanso_databricks_workspace.sensor_readings.sensor_readings_validated
   WHERE processing_timestamp >= current_timestamp() - INTERVAL 7 DAYS
 )
@@ -129,7 +129,7 @@ ORDER BY anomaly_rate DESC;
 -- =====================================================
 -- Identifies turbines with critical vibration levels
 SELECT 
-  turbine_id,
+  sensor_id,
   site_id,
   MAX(vibration_x) as max_vibration_x,
   MAX(vibration_y) as max_vibration_y,
@@ -140,7 +140,7 @@ SELECT
 FROM expanso_databricks_workspace.sensor_readings.sensor_readings_anomalies
 WHERE (vibration_x > 50 OR vibration_y > 50 OR vibration_z > 50)
   AND processing_timestamp >= current_timestamp() - INTERVAL 24 HOURS
-GROUP BY turbine_id, site_id
+GROUP BY sensor_id, site_id
 ORDER BY max_vibration_overall DESC;
 
 -- =====================================================
@@ -152,16 +152,16 @@ WITH quality_metrics AS (
     'Last Hour' as time_period,
     COUNT(*) as total_records,
     SUM(CASE WHEN validation_error IS NOT NULL THEN 1 ELSE 0 END) as invalid_records,
-    COUNT(DISTINCT turbine_id) as active_turbines,
+    COUNT(DISTINCT sensor_id) as active_turbines,
     COUNT(DISTINCT site_id) as active_sites
   FROM (
-    SELECT turbine_id, site_id, validation_error
+    SELECT sensor_id, site_id, validation_error
     FROM expanso_databricks_workspace.sensor_readings.sensor_readings_anomalies
     WHERE processing_timestamp >= current_timestamp() - INTERVAL 1 HOUR
     
     UNION ALL
     
-    SELECT turbine_id, site_id, NULL as validation_error
+    SELECT sensor_id, site_id, NULL as validation_error
     FROM expanso_databricks_workspace.sensor_readings.sensor_readings_validated
     WHERE processing_timestamp >= current_timestamp() - INTERVAL 1 HOUR
   )
@@ -172,16 +172,16 @@ WITH quality_metrics AS (
     'Last 24 Hours' as time_period,
     COUNT(*) as total_records,
     SUM(CASE WHEN validation_error IS NOT NULL THEN 1 ELSE 0 END) as invalid_records,
-    COUNT(DISTINCT turbine_id) as active_turbines,
+    COUNT(DISTINCT sensor_id) as active_turbines,
     COUNT(DISTINCT site_id) as active_sites
   FROM (
-    SELECT turbine_id, site_id, validation_error
+    SELECT sensor_id, site_id, validation_error
     FROM expanso_databricks_workspace.sensor_readings.sensor_readings_anomalies
     WHERE processing_timestamp >= current_timestamp() - INTERVAL 24 HOURS
     
     UNION ALL
     
-    SELECT turbine_id, site_id, NULL as validation_error
+    SELECT sensor_id, site_id, NULL as validation_error
     FROM expanso_databricks_workspace.sensor_readings.sensor_readings_validated
     WHERE processing_timestamp >= current_timestamp() - INTERVAL 24 HOURS
   )
@@ -208,7 +208,7 @@ ORDER BY
 SELECT 
   DATE(processing_timestamp) as date,
   COUNT(*) as anomalies_detected,
-  COUNT(DISTINCT turbine_id) as affected_turbines,
+  COUNT(DISTINCT sensor_id) as affected_turbines,
   COUNT(DISTINCT 
     CASE 
       WHEN validation_error LIKE '%Rotation%wind%' THEN 'rotation_without_wind'
@@ -264,7 +264,7 @@ ORDER BY
 -- Prioritizes turbines needing immediate attention
 WITH recent_anomalies AS (
   SELECT 
-    turbine_id,
+    sensor_id,
     site_id,
     COUNT(*) as anomaly_count,
     MAX(processing_timestamp) as last_anomaly,
@@ -281,10 +281,10 @@ WITH recent_anomalies AS (
   FROM expanso_databricks_workspace.sensor_readings.sensor_readings_anomalies
   WHERE validation_error IS NOT NULL
     AND processing_timestamp >= current_timestamp() - INTERVAL 4 HOURS
-  GROUP BY turbine_id, site_id
+  GROUP BY sensor_id, site_id
 )
 SELECT 
-  turbine_id,
+  sensor_id,
   site_id,
   anomaly_count,
   last_anomaly,

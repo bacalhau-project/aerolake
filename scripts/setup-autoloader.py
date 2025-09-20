@@ -53,8 +53,8 @@ def setup_autoloader():
             "sql": """
                 -- Read JSON files and explode the records array
                 INSERT INTO {catalog}.{schema}.sensor_readings_ingestion
-                SELECT 
-                    record.sensor_id as turbine_id,
+                SELECT
+                    record.sensor_id,
                     to_timestamp(record.timestamp) as timestamp,
                     CAST(record.temperature AS DOUBLE) as temperature,
                     CAST(record.humidity AS DOUBLE) as humidity,
@@ -76,8 +76,8 @@ def setup_autoloader():
             "sql": """
                 -- Read JSON files and explode the records array
                 INSERT INTO {catalog}.{schema}.sensor_readings_validated
-                SELECT 
-                    record.sensor_id as turbine_id,
+                SELECT
+                    record.sensor_id,
                     to_timestamp(record.timestamp) as timestamp,
                     CAST(record.temperature AS DOUBLE) as temperature,
                     CAST(record.humidity AS DOUBLE) as humidity,
@@ -99,8 +99,8 @@ def setup_autoloader():
             "sql": """
                 -- Read JSON files and explode the records array
                 INSERT INTO {catalog}.{schema}.sensor_readings_enriched
-                SELECT 
-                    record.sensor_id as turbine_id,
+                SELECT
+                    record.sensor_id,
                     to_timestamp(record.timestamp) as timestamp,
                     CAST(record.temperature AS DOUBLE) as temperature,
                     CAST(record.humidity AS DOUBLE) as humidity,
@@ -111,6 +111,60 @@ def setup_autoloader():
                 FROM (
                     SELECT explode(records) as record
                     FROM json.`s3://expanso-databricks-enriched-us-west-2/ingestion/*/*/*/*/data.json`
+                )
+                WHERE record.sensor_id IS NOT NULL
+            """
+        },
+        {
+            "name": "anomalies",
+            "source_bucket": "expanso-databricks-anomalies-us-west-2",
+            "target_table": "sensor_readings_anomalies",
+            "sql": """
+                -- Read JSON files and explode the records array
+                INSERT INTO {catalog}.{schema}.sensor_readings_anomalies
+                SELECT
+                    record.sensor_id,
+                    to_timestamp(record.timestamp) as timestamp,
+                    CAST(record.temperature AS DOUBLE) as temperature,
+                    CAST(record.humidity AS DOUBLE) as humidity,
+                    CAST(record.pressure AS DOUBLE) as pressure,
+                    CAST(record.voltage AS DOUBLE) as voltage,
+                    CAST(record.anomaly_flag AS INT) as anomaly_flag,
+                    record.anomaly_type,
+                    CAST(record.anomaly_score AS DOUBLE) as anomaly_score,
+                    record.location as location,
+                    current_timestamp() as anomalies_at
+                FROM (
+                    SELECT explode(records) as record
+                    FROM json.`s3://expanso-databricks-anomalies-us-west-2/ingestion/*/*/*/*/data.json`
+                )
+                WHERE record.sensor_id IS NOT NULL
+            """
+        },
+        {
+            "name": "aggregated",
+            "source_bucket": "expanso-databricks-aggregated-us-west-2",
+            "target_table": "sensor_readings_aggregated",
+            "sql": """
+                -- Read JSON files and explode the records array
+                INSERT INTO {catalog}.{schema}.sensor_readings_aggregated
+                SELECT
+                    record.sensor_id,
+                    to_timestamp(record.window_start) as window_start,
+                    to_timestamp(record.window_end) as window_end,
+                    CAST(record.avg_temperature AS DOUBLE) as avg_temperature,
+                    CAST(record.min_temperature AS DOUBLE) as min_temperature,
+                    CAST(record.max_temperature AS DOUBLE) as max_temperature,
+                    CAST(record.avg_humidity AS DOUBLE) as avg_humidity,
+                    CAST(record.avg_pressure AS DOUBLE) as avg_pressure,
+                    CAST(record.avg_vibration AS DOUBLE) as avg_vibration,
+                    CAST(record.avg_voltage AS DOUBLE) as avg_voltage,
+                    CAST(record.record_count AS INT) as record_count,
+                    CAST(record.anomaly_count AS INT) as anomaly_count,
+                    current_timestamp() as aggregated_at
+                FROM (
+                    SELECT explode(records) as record
+                    FROM json.`s3://expanso-databricks-aggregated-us-west-2/ingestion/*/*/*/*/data.json`
                 )
                 WHERE record.sensor_id IS NOT NULL
             """
