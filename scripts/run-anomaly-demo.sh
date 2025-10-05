@@ -93,9 +93,8 @@ fi
 
 print_step "Checking for required files..."
 REQUIRED_FILES=(
-    "databricks-uploader/wind-turbine-schema.json"
-    "databricks-uploader/sensor_data_models.py"
-    "databricks-uploader/sqlite_to_databricks_uploader.py"
+    "docs/schemas/wind-turbine-v1.json"
+    "spot/instance-files/opt/sensor/sensor_models.py"
     "scripts/start-sensor.sh"
 )
 
@@ -155,9 +154,8 @@ wait_with_message 10 "Waiting for sensor to generate initial data"
 print_header "STEP 4: PIPELINE CONFIGURATION"
 
 print_step "Setting pipeline to 'schematized' mode for validation..."
-cd databricks-uploader
-uv run pipeline_manager.py set --type schematized
-cd ..
+expanso job run jobs/edge-processing-job.yaml \
+    --template-vars pipeline_type=schematized
 print_success "Pipeline configured for anomaly detection"
 
 # Step 5: Run Uploader with Validation
@@ -171,18 +169,16 @@ echo -e "  ${GREEN}3.${NC} Route valid data → validated bucket"
 echo -e "  ${GREEN}4.${NC} Route invalid data → anomalies bucket"
 echo ""
 
-# Run uploader for a few cycles
-print_info "Running 3 upload cycles (this will take ~45 seconds)..."
-cd databricks-uploader
+# Run edge processing for a few cycles
+print_info "Running 3 processing cycles (this will take ~45 seconds)..."
 
 for i in {1..3}; do
     echo ""
-    echo -e "${CYAN}━━━ Upload Cycle $i/3 ━━━${NC}"
+    echo -e "${CYAN}━━━ Processing Cycle $i/3 ━━━${NC}"
     
-    # Run uploader once
-    timeout 10 uv run sqlite_to_databricks_uploader.py \
-        --config config.yaml \
-        --once || true
+    # Run edge processing once
+    timeout 10 expanso job run jobs/edge-processing-job.yaml \
+        --template-vars pipeline_type=schematized || true
     
     wait_with_message 5 "Waiting before next cycle"
 done
@@ -286,5 +282,5 @@ echo -e "  • Detection types: Rotation without wind, Excessive vibration, Powe
 echo ""
 echo -e "${BLUE}To run continuously, use:${NC}"
 echo -e "  ${CYAN}./scripts/start-sensor.sh --with-anomalies${NC}  # Generate sensor data with anomalies"
-echo -e "  ${CYAN}cd databricks-uploader && uv run sqlite_to_databricks_uploader.py${NC}"
+echo -e "  ${CYAN}expanso job run jobs/edge-processing-job.yaml${NC}"
 echo ""

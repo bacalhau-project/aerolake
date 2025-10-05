@@ -29,10 +29,10 @@ Edit `.env` with your specific values:
 ```bash
 # GitHub/Docker Configuration (for container deployment)
 GITHUB_TOKEN=ghp_your-actual-token-here
-GITHUB_USER=bacalhau-project
+GITHUB_USER=expanso-io
 REGISTRY=ghcr.io
-ORGANIZATION_NAME=bacalhau-project
-IMAGE_NAME=databricks-uploader
+ORGANIZATION_NAME=expanso-io
+IMAGE_NAME=sensor-processor
 
 # AWS Configuration
 AWS_REGION=us-east-1

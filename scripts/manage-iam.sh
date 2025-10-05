@@ -93,16 +93,16 @@ if [ -z "$ACCOUNT_ID" ]; then
     exit 1
 fi
 
-# Define S3 buckets
+# Define S3 buckets - use actual bucket names from bucket-config.env
 declare -a BUCKETS=(
-    "expanso-databricks-ingestion-${AWS_REGION}"
-    "expanso-databricks-validated-${AWS_REGION}"
-    "expanso-databricks-enriched-${AWS_REGION}"
-    "expanso-databricks-aggregated-${AWS_REGION}"
-    "expanso-databricks-checkpoints-${AWS_REGION}"
-    "expanso-databricks-output-${AWS_REGION}"
-    "expanso-databricks-anomalies-${AWS_REGION}"
     "expanso-raw-data-${AWS_REGION}"
+    "expanso-validated-data-${AWS_REGION}"
+    "expanso-anomalies-data-${AWS_REGION}"
+    "expanso-anomalies-${AWS_REGION}"
+    "expanso-schematized-data-${AWS_REGION}"
+    "expanso-aggregated-data-${AWS_REGION}"
+    "expanso-checkpoints-${AWS_REGION}"
+    "expanso-metadata-${AWS_REGION}"
 )
 
 # Setup IAM user for S3 access
@@ -198,13 +198,6 @@ setup_iam_role() {
                     "sts:ExternalId": "databricks-unity-catalog"
                 }
             }
-        },
-        {
-            "Effect": "Allow",
-            "Principal": {
-                "AWS": "arn:aws:iam::${ACCOUNT_ID}:role/${IAM_ROLE}"
-            },
-            "Action": "sts:AssumeRole"
         }
     ]
 }
@@ -243,7 +236,7 @@ EOF
                 "s3:PutLifecycleConfiguration"
             ],
             "Resource": [
-$(printf '                "arn:aws:s3:::%s",\n' "${BUCKETS[@]}" | sed '$ s/,$//')
+$(printf '                "arn:aws:s3:::%s",\n' "${BUCKETS[@]}")
 $(printf '                "arn:aws:s3:::%s/*",\n' "${BUCKETS[@]}" | sed '$ s/,$//')
             ]
         },

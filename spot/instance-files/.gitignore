@@ -19,6 +19,14 @@ etc/bacalhau/orchestrator_token
 !etc/bacalhau/orchestrator_endpoint.real.sample
 !etc/bacalhau/orchestrator_token.real.sample
 
+# Expanso Edge - NEVER commit real bootstrap credentials
+etc/expanso/edge/bootstrap-token
+!etc/expanso/edge/bootstrap-token.sample
+etc/expanso/edge/bootstrap-url
+!etc/expanso/edge/bootstrap-url.sample
+etc/expanso/edge/expanso-edge-env
+!etc/expanso/edge/expanso-edge-env.sample
+
 # Environment files (none needed - all config in YAML files)
 
 # Node identity files (generated at runtime)

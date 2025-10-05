@@ -28,7 +28,7 @@ region = us-west-2
 ## Deployment
 
 During instance creation, the `aws-credentials` file will be:
-1. Copied to `/root/.aws/credentials` (for Bacalhau containers)
+1. Copied to `/root/.aws/credentials` (for Expanso containers)
 2. Copied to `/home/ubuntu/.aws/credentials` (for ubuntu user)
 
 ## Security

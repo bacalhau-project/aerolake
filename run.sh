@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run script for Databricks-Bacalhau pipeline
+# Run script for Expanso Edge pipeline
 
 set -e
 
@@ -66,10 +66,9 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --mode MODE         Run mode: local, docker, bacalhau \
+            echo "  --mode MODE         Run mode: local, docker, expanso \
 (default: local)"
-            echo "  --component NAME    Component to run: uploader, \
-pipeline-manager, sensor, all"
+            echo "  --component NAME    Component to run: sensor, edge, all"
             echo "  --env-file FILE     Environment file (default: .env)"
             echo "  --detach, -d        Run in detached mode (Docker only)"
             echo "  --follow-logs, -f   Follow logs after starting"
@@ -82,17 +81,11 @@ pipeline-manager, sensor, all"
             echo "  # Run sensor locally to generate data:"
             echo "  $0 --mode local --component sensor"
             echo ""
-            echo "  # Run uploader locally (reads from sensor DB):"
-            echo "  $0 --mode local --component uploader"
-            echo ""
-            echo "  # Check/change pipeline configuration locally:"
-            echo "  $0 --mode local --component pipeline-manager"
-            echo ""
             echo "  # Run everything in Docker:"
             echo "  $0 --mode docker --component all -d"
             echo ""
-            echo "  # Run uploader on Bacalhau:"
-            echo "  $0 --mode bacalhau --component uploader"
+            echo "  # Run on Expanso Edge:"
+            echo "  $0 --mode expanso --component edge"
             exit 0
             ;;
         *)
@@ -113,59 +106,6 @@ fi
 set -a
 source "$ENV_FILE"
 set +a
-
-# Function to run uploader locally
-run_uploader_local() {
-    print_status "Running databricks-uploader locally..."
-    
-    # Check for required files
-    if [ ! -f "databricks-uploader/databricks-s3-uploader-config.yaml" ]; then
-        print_error "Config file not found: databricks-s3-uploader-config.yaml"
-        exit 1
-    fi
-    
-    if [ ! -f "sample-sensor/data/sensor_data.db" ]; then
-        print_warning "Sensor database not found. Run sensor first:"
-        print_info "./run.sh --mode local --component sensor"
-        exit 1
-    fi
-    
-    # Source AWS credentials if available
-    if [ -f "credentials/expanso-s3-env.sh" ]; then
-        print_info "Loading AWS credentials from credentials/expanso-s3-env.sh"
-        source credentials/expanso-s3-env.sh
-    elif [ -f "credentials/expanso-s3-credentials" ]; then
-        print_info "Loading AWS credentials from credentials/expanso-s3-credentials"
-        source credentials/expanso-s3-credentials
-    else
-        print_warning "No credentials file found in credentials/"
-        print_info "Expecting AWS credentials in environment variables"
-    fi
-    
-    # Check if AWS credentials are set
-    if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
-        print_error "AWS credentials not found!"
-        print_info "Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
-        print_info "Or create credentials/expanso-s3-env.sh with:"
-        echo "  export AWS_ACCESS_KEY_ID=your-key-id"
-        echo "  export AWS_SECRET_ACCESS_KEY=your-secret-key"
-        echo "  export AWS_REGION=us-west-2"
-        exit 1
-    fi
-    
-    print_info "Using config: databricks-uploader/databricks-s3-uploader-config-local.yaml"
-    print_info "Using database: sample-sensor/data/sensor_data.db"
-    print_info "State directory: databricks-uploader/state"
-    print_info "AWS Region: ${AWS_REGION:-us-west-2}"
-    
-    print_status "Starting uploader..."
-    cd databricks-uploader
-    AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
-    AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
-    AWS_REGION="${AWS_REGION:-us-west-2}" \
-    uv run sqlite_to_databricks_uploader.py \
-        --config databricks-s3-uploader-config-local.yaml
-}
 
 # Function to print Docker image version info
 print_docker_version_info() {
@@ -210,99 +150,6 @@ print_docker_version_info() {
     echo ""
 }
 
-# Function to run uploader in Docker
-run_uploader_docker() {
-    print_status "Running databricks-uploader in Docker..."
-    
-    print_info "Pulling latest databricks-uploader image..."
-    docker pull ghcr.io/bacalhau-project/databricks-uploader:latest
-    
-    # Print version info after pulling
-    print_docker_version_info "ghcr.io/bacalhau-project/databricks-uploader:latest" "databricks-uploader"
-    
-    # Stop existing container if running
-    docker stop databricks-uploader 2>/dev/null || true
-    docker rm databricks-uploader 2>/dev/null || true
-    
-    cmd="docker run $DETACH \
-        --name databricks-uploader \
-        -v \"$(pwd)/databricks-uploader/databricks-s3-uploader-config.yaml:/app/config.yaml:ro\" \
-        -v \"$(pwd)/sample-sensor/data/sensor_data.db:/app/sensor_data.db:ro\" \
-        -v \"$(pwd)/credentials:/bacalhau_data/credentials:ro\" \
-        -v \"$(pwd)/databricks-uploader/state:/app/state\" \
-        -v \"$(pwd)/logs:/app/logs\" \
-        -e AWS_ACCESS_KEY_ID=\"\${AWS_ACCESS_KEY_ID}\" \
-        -e AWS_SECRET_ACCESS_KEY=\"\${AWS_SECRET_ACCESS_KEY}\" \
-        -e AWS_REGION=\"\${AWS_REGION:-us-west-2}\" \
-        ghcr.io/bacalhau-project/databricks-uploader:latest"
-
-    print_info "Docker command to run uploader:"
-    echo "$cmd"
-    
-    print_status "Starting databricks-uploader container..."
-    eval "$cmd"
-    
-    if [ "$FOLLOW_LOGS" == "true" ] && [ -n "$DETACH" ]; then
-        docker logs -f databricks-uploader
-    fi
-}
-
-# Function to run pipeline manager locally
-run_pipeline_manager_local() {
-    print_status "Pipeline-manager is a CLI tool..."
-    
-    # Ensure state directory exists
-    mkdir -p databricks-uploader/state
-    
-    DB_PATH="databricks-uploader/state/pipeline_config.db"
-    
-    # Show current configuration
-    print_info "Current pipeline configuration:"
-    cd pipeline-manager
-    uv run -s pipeline_controller.py --db "../$DB_PATH" get
-    
-    echo ""
-    print_info "Available commands:"
-    echo "  Get current:  cd pipeline-manager && uv run -s pipeline_controller.py \\"
-    echo "                --db ../$DB_PATH get"
-    echo ""
-    echo "  Set type:     cd pipeline-manager && uv run -s pipeline_controller.py \\"
-    echo "                --db ../$DB_PATH set <type>"
-    echo ""
-    echo "  Show history: cd pipeline-manager && uv run -s pipeline_controller.py \\"
-    echo "                --db ../$DB_PATH history"
-    echo ""
-    echo "  Monitor:      cd pipeline-manager && uv run -s pipeline_controller.py \\"
-    echo "                --db ../$DB_PATH monitor"
-    echo ""
-    echo "Pipeline types: raw, schematized, filtered, aggregated"
-}
-
-# Function to run pipeline manager in Docker
-run_pipeline_manager_docker() {
-    print_status "Pipeline-manager is a CLI tool, not a service..."
-    
-    print_info "Pulling latest pipeline-manager image..."
-    docker pull ghcr.io/bacalhau-project/pipeline-manager:latest
-    
-    # Print version info after pulling
-    print_docker_version_info "ghcr.io/bacalhau-project/pipeline-manager:latest" "pipeline-manager"
-    
-    cmd="docker run --rm \
-        -v \"$(pwd)/databricks-uploader/state:/state\" \
-        ghcr.io/bacalhau-project/pipeline-manager:latest \
-        --db /state/pipeline_config.db get"
-    
-    print_info "Docker command to get current configuration:"
-    echo "$cmd"
-    
-    eval "$cmd"
-    
-    if [ "$FOLLOW_LOGS" == "true" ] && [ -n "$DETACH" ]; then
-        docker logs -f pipeline-manager
-    fi
-}
-
 # Function to run sensor simulator
 run_sensor() {
     print_status "Running sensor simulator..."
@@ -317,12 +164,12 @@ run_sensor() {
     # Pull latest sensor image if enabled (for both local and docker modes)
     if [ "$PULL_LATEST" == "true" ]; then
         print_info "Pulling latest sensor-log-generator image..."
-        docker pull ghcr.io/bacalhau-project/sensor-log-generator:latest || {
+        docker pull ghcr.io/expanso-io/sensor-log-generator:latest || {
             print_warning "Could not pull sensor image from registry"
         }
         
         # Print version info after pulling
-        print_docker_version_info "ghcr.io/bacalhau-project/sensor-log-generator:latest" "sensor-log-generator"
+        print_docker_version_info "ghcr.io/expanso-io/sensor-log-generator:latest" "sensor-log-generator"
     fi
     
     print_info "This will run the sensor using the start-sensor.sh script"
@@ -337,12 +184,7 @@ check_dependencies() {
     
     case $MODE in
         local)
-            if ! command -v uv &> /dev/null; then
-                print_error "uv is not installed"
-                print_info "Install with: curl -LsSf \
-https://astral.sh/uv/install.sh | sh"
-                deps_missing=true
-            fi
+            # Local mode doesn't require special dependencies for sensor
             ;;
         docker)
             if ! command -v docker &> /dev/null; then
@@ -350,10 +192,10 @@ https://astral.sh/uv/install.sh | sh"
                 deps_missing=true
             fi
             ;;
-        bacalhau)
-            if ! command -v bacalhau &> /dev/null; then
-                print_error "Bacalhau is not installed"
-                print_info "Install from: https://docs.bacalhau.org/getting-started/installation"
+        expanso)
+            # Expanso mode - check for Docker (Edge runs in containers)
+            if ! command -v docker &> /dev/null; then
+                print_error "Docker is required for Expanso mode"
                 deps_missing=true
             fi
             ;;
@@ -368,36 +210,17 @@ https://astral.sh/uv/install.sh | sh"
 check_dependencies
 
 case $COMPONENT in
-    uploader)
-        case $MODE in
-            local)
-                run_uploader_local
-                ;;
-            docker)
-                run_uploader_docker
-                ;;
-            *)
-                print_error "Unknown mode: $MODE"
-                exit 1
-                ;;
-        esac
-        ;;
-    pipeline-manager)
-        case $MODE in
-            local)
-                run_pipeline_manager_local
-                ;;
-            docker)
-                run_pipeline_manager_docker
-                ;;
-            *)
-                print_error "Pipeline manager only supports local and docker modes"
-                exit 1
-                ;;
-        esac
-        ;;
     sensor)
         run_sensor
+        ;;
+    edge)
+        if [ "$MODE" == "expanso" ]; then
+            print_status "Running on Expanso Edge..."
+            print_info "Expanso Edge deployment handled by instance files"
+        else
+            print_error "Edge component only supported with --mode expanso"
+            exit 1
+        fi
         ;;
     all)
         if [ "$MODE" == "docker" ]; then
@@ -410,7 +233,7 @@ case $COMPONENT in
         ;;
     *)
         print_error "Unknown component: $COMPONENT"
-        print_error "Valid components: uploader, pipeline-manager, sensor, all"
+        print_error "Valid components: sensor, edge, all"
         exit 1
         ;;
 esac

@@ -1,7 +1,7 @@
 [project]
-name = "databricks-with-bacalhau"
+name = "databricks-with-edge"
 version = "0.1.0"
-description = "Databricks integration with Bacalhau for data engineering"
+description = "Databricks integration with Expanso Edge for data engineering"
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.0.0",
@@ -62,7 +62,7 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 ignore_missing_imports = true
-files = ["databricks-uploader/*.py", "scripts/*.py"]
+files = ["scripts/*.py"]
 exclude = ["databricks-notebooks/"]
 
 [tool.pylint.messages_control]

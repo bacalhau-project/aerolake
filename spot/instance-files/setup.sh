@@ -6,7 +6,6 @@ set -e  # Exit on error
 
 echo "Starting amauo deployment setup..."
 
-
 # First, deploy files from the extracted structure to their proper locations
 echo "Deploying files to system locations..."
 
@@ -34,7 +33,6 @@ fi
 # Set proper permissions for scripts and services (be very specific)
 find /usr/local/bin -name "*.py" -exec sudo chmod 755 {} \; 2>/dev/null || true
 find /usr/local/bin -name "*.sh" -exec sudo chmod 755 {} \; 2>/dev/null || true
-find /etc/systemd/system -name "*.service" -exec sudo chmod 644 {} \; 2>/dev/null || true
 
 echo "Files deployed successfully"
 
@@ -50,6 +48,28 @@ else
     echo "uv already installed"
 fi
 
+# Install expanso-edge binary if not present
+if ! command -v expanso-edge &> /dev/null; then
+    echo "Installing expanso-edge..."
+    curl -fsSL https://get.expanso.io/edge/install.sh | bash
+    echo "expanso-edge installed successfully"
+else
+    echo "expanso-edge already installed"
+fi
+
+# Load expanso-edge environment variables if available
+if [ -f /etc/expanso/edge/expanso-edge-env ]; then
+    echo "Loading expanso-edge environment variables..."
+    set -a
+    source /etc/expanso/edge/expanso-edge-env
+    set +a
+    echo "Bootstrap configuration loaded"
+else
+    echo "Warning: /etc/expanso/edge/expanso-edge-env not found"
+    echo "  expanso-edge will start but won't connect without bootstrap \
+credentials"
+fi
+
 # Install Docker if not present
 if ! command -v docker &> /dev/null; then
     echo "Installing Docker..."
@@ -59,7 +79,8 @@ if ! command -v docker &> /dev/null; then
     sudo apt-get install -y gnupg lsb-release ca-certificates curl || true
     
     # Try the official Docker installation script
-    if curl -fsSL https://get.docker.com -o /tmp/get-docker.sh 2>/dev/null; then
+    if curl -fsSL https://get.docker.com -o /tmp/get-docker.sh 2>/dev/null; \
+        then
         sudo sh /tmp/get-docker.sh 2>/dev/null || {
             echo "Docker script failed, trying alternative installation..."
             # Fallback: install from Ubuntu repositories
@@ -94,56 +115,24 @@ fi
 echo "Waiting for Docker to be ready..."
 sleep 5
 
-# Reload systemd daemon to pick up new service files
-sudo systemctl daemon-reload
-
-# Enable services
-echo "Enabling services..."
-sudo systemctl enable bacalhau.service 2>/dev/null && echo "Enabled bacalhau.service" || echo "Could not enable bacalhau.service"
-sudo systemctl enable sensor.service 2>/dev/null && echo "Enabled sensor.service" || echo "Could not enable sensor.service"
-
 # Set up proper ownership and permissions for data directories
-sudo mkdir -p /bacalhau_data /bacalhau_node /opt/bacalhau_node
-sudo mkdir -p /opt/sensor/config /opt/sensor/logs /opt/sensor/data /opt/sensor/exports
-sudo chown -R ubuntu:ubuntu /bacalhau_data /bacalhau_node /opt/compose /opt/sensor 2>/dev/null || true
-sudo chmod 755 /bacalhau_data /bacalhau_node /opt/sensor 2>/dev/null || true
+sudo mkdir -p /opt/sensor/config /opt/sensor/logs /opt/sensor/data \
+    /opt/sensor/exports
+sudo mkdir -p /etc/expanso/edge
+sudo mkdir -p /var/lib/expanso/edge
+sudo chown -R ubuntu:ubuntu /opt/compose /opt/sensor /etc/expanso \
+    /var/lib/expanso 2>/dev/null || true
+sudo chmod 755 /opt/sensor /etc/expanso /var/lib/expanso 2>/dev/null || true
 
-# Generate Bacalhau configuration from template - STRICT MODE
-echo "Generating Bacalhau configuration from template..."
-
-# STRICT: Check for required files
-if [ ! -f /etc/bacalhau/bacalhau-config-template.yaml ]; then
-    echo "ERROR: Bacalhau config template not found at /etc/bacalhau/bacalhau-config-template.yaml"
-    echo "ERROR: Required template file is missing from deployment"
-    exit 1
-fi
-
-if [ ! -f /etc/bacalhau/orchestrator_endpoint ]; then
-    echo "ERROR: Orchestrator endpoint file not found at /etc/bacalhau/orchestrator_endpoint"
-    echo "ERROR: Required credential file is missing from deployment"
-    exit 1
-fi
-
-if [ ! -f /etc/bacalhau/orchestrator_token ]; then
-    echo "ERROR: Orchestrator token file not found at /etc/bacalhau/orchestrator_token"
-    echo "ERROR: Required credential file is missing from deployment"
-    exit 1
-fi
-
-# STRICT: Read credentials and validate
-ENDPOINT=$(cat /etc/bacalhau/orchestrator_endpoint | tr -d '[:space:]')
-TOKEN=$(cat /etc/bacalhau/orchestrator_token | tr -d '[:space:]')
-
-if [ -z "$ENDPOINT" ]; then
-    echo "ERROR: Orchestrator endpoint is empty"
-    echo "ERROR: Invalid or empty orchestrator endpoint file"
-    exit 1
-fi
-
-if [ -z "$TOKEN" ]; then
-    echo "ERROR: Orchestrator token is empty"
-    echo "ERROR: Invalid or empty orchestrator token file"
-    exit 1
+# Generate edge configuration if network ID is provided
+if [ -f /etc/expanso/edge/network_id ] && [ -f /etc/expanso/edge/config.yaml ]; then
+    NETWORK_ID=$(cat /etc/expanso/edge/network_id | tr -d '[:space:]')
+    if [ -n "$NETWORK_ID" ]; then
+        echo "Generating edge configuration with network ID: $NETWORK_ID"
+        sed "s|{{NETWORK_ID}}|$NETWORK_ID|g" /etc/expanso/edge/config.yaml > /tmp/edge-config-generated.yaml
+        sudo mv /tmp/edge-config-generated.yaml /etc/expanso/edge/config.yaml
+        sudo chown ubuntu:ubuntu /etc/expanso/edge/config.yaml
+    fi
 fi
 
 # Get instance metadata for node labeling
@@ -175,54 +164,8 @@ else
     echo "INFO: Using default region: $REGION"
 fi
 
-echo "SUCCESS: Using orchestrator endpoint: $ENDPOINT"
-echo "SUCCESS: Using orchestrator token: ${TOKEN:0:15}..."
 echo "SUCCESS: Instance ID: $INSTANCE_ID"
 echo "SUCCESS: Region: $REGION"
-
-# STRICT: Render template with validation
-echo "SUCCESS: Rendering Bacalhau config from template..."
-echo "DEBUG: Template substitution variables:"
-echo "  ENDPOINT='$ENDPOINT'"
-echo "  TOKEN='${TOKEN:0:15}...'"
-echo "  INSTANCE_ID='$INSTANCE_ID'"
-echo "  REGION='$REGION'"
-
-# Generate the config with substitution
-if ! sed -e "s|{{ORCHESTRATOR_ENDPOINT}}|$ENDPOINT|g" \
--e "s|{{ORCHESTRATOR_TOKEN}}|$TOKEN|g" \
--e "s|{{INSTANCE_ID}}|$INSTANCE_ID|g" \
--e "s|{{REGION}}|$REGION|g" \
-/etc/bacalhau/bacalhau-config-template.yaml | sudo tee /etc/bacalhau/config.yaml > /dev/null; then
-    echo "ERROR: Failed to render Bacalhau config template"
-    echo "ERROR: Template rendering failed - deployment aborted"
-    exit 1
-fi
-
-echo "SUCCESS: Bacalhau configuration generated from template"
-
-# Debug: Show a few key lines from generated config
-echo "DEBUG: Generated config preview:"
-grep -A 1 -E "(Token:|Orchestrators:|NameProvider:)" /etc/bacalhau/config.yaml | head -10
-
-# CRITICAL: Validate that template substitution actually worked
-if grep -q "{{" /etc/bacalhau/config.yaml; then
-    echo "ERROR: Template placeholders still found in generated config!"
-    echo "ERROR: Failed substitution patterns:"
-    grep "{{" /etc/bacalhau/config.yaml
-    echo "ERROR: This indicates template substitution failed - aborting"
-    exit 1
-fi
-
-echo "SUCCESS: Configuration validation passed"
-
-# Create a node-specific Docker Compose file with proper node name
-echo "Creating node-specific Docker Compose configuration..."
-NODE_NAME="bacalhau-${INSTANCE_ID:-$(hostname)}"
-sed "s|command: \\[\"serve\", \"--config\", \"/etc/bacalhau/config.yaml\"\\]|command: [\"serve\", \"--config\", \"/etc/bacalhau/config.yaml\", \"--name\", \"$NODE_NAME\"]|" /opt/compose/docker-compose-bacalhau.yaml > /opt/compose/docker-compose-bacalhau-node.yaml
-
-echo "DEBUG: Created node-specific compose with name: $NODE_NAME"
-
 
 # Generate node identity if the script exists
 if [ -x /usr/local/bin/generate_node_identity.py ]; then
@@ -231,26 +174,24 @@ if [ -x /usr/local/bin/generate_node_identity.py ]; then
     sudo -u ubuntu /usr/local/bin/generate_node_identity.py -o /opt/sensor/config/node_identity.json
 fi
 
-# Generate Bacalhau labels from EC2 metadata and sensor identity
-if [ -x /usr/local/bin/generate_bacalhau_labels.sh ]; then
-    echo "Generating Bacalhau node labels..."
-    BACALHAU_LABELS=$(/usr/local/bin/generate_bacalhau_labels.sh)
-    if [ -n "$BACALHAU_LABELS" ]; then
-        echo "Generated labels in YAML format"
-        # Add labels to the Bacalhau config (already in YAML format)
-        echo "" | sudo tee -a /etc/bacalhau/config.yaml
-        echo "# Node Labels from EC2 metadata and sensor identity" | sudo tee -a /etc/bacalhau/config.yaml
-        echo "$BACALHAU_LABELS" | sudo tee -a /etc/bacalhau/config.yaml
-        echo "Successfully added labels to Bacalhau config"
-    else
-        echo "Warning: No labels generated"
-    fi
+# Start services
+echo "Starting services..."
+
+# Start expanso-edge service using systemd
+sudo systemctl enable expanso-edge.service 2>/dev/null || true
+if sudo systemctl start expanso-edge.service 2>/dev/null; then
+    echo "Started expanso-edge.service"
+else
+    echo "Could not start expanso-edge.service"
 fi
 
-# Start services (Docker should be ready now)
-echo "Starting services..."
-sudo systemctl start bacalhau.service 2>/dev/null && echo "Started bacalhau.service" || echo "Could not start bacalhau.service"
-sudo systemctl start sensor.service 2>/dev/null && echo "Started sensor.service" || echo "Could not start sensor.service"
+# Start sensor service using systemd
+sudo systemctl enable sensor.service 2>/dev/null || true
+if sudo systemctl start sensor.service 2>/dev/null; then
+    echo "Started sensor.service"
+else
+    echo "Could not start sensor.service"
+fi
 
 echo "✅ Amauo deployment setup complete!"
 

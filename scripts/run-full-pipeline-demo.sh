@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Full Pipeline Demo - Runs each stage for 1 minute to show data flow
+# Full Pipeline Demo - Runs edge processing demo
 # Usage: ./run-full-pipeline-demo.sh
 
 set -e
@@ -34,13 +34,13 @@ print_info() {
     echo -e "${CYAN}ℹ${NC}  $1"
 }
 
-# Function to check bucket with counts (SKIPPED - Bacalhau environment)
+# Function to check bucket with counts (SKIPPED - Expanso environment)
 check_bucket_status() {
     local bucket=$1
 
     print_status "Pipeline stage: $bucket"
-    echo "  ${CYAN}ℹ${NC} S3 bucket checks skipped in Bacalhau environment"
-    echo "  ${CYAN}ℹ${NC} Data flow happens within Bacalhau cluster"
+    echo "  ${CYAN}ℹ${NC} S3 bucket checks skipped in Expanso environment"
+    echo "  ${CYAN}ℹ${NC} Data flow happens within Expanso cluster"
 }
 
 # Function to show countdown timer
@@ -48,138 +48,124 @@ countdown() {
     local seconds=$1
     local message=$2
     
-    while [ $seconds -gt 0 ]; do
-        printf "\r${CYAN}⏱${NC}  $message: ${GREEN}${seconds}s${NC} remaining... "
+    echo -e "${GREEN}$message${NC}"
+    for i in $(seq $seconds -1 1); do
+        echo -ne "${YELLOW}⏳ ${i} seconds remaining...\r${NC}"
         sleep 1
-        ((seconds--))
     done
-    printf "\r${GREEN}✓${NC} $message: Complete!                    \n"
+    echo -e "${GREEN}✓ Stage complete!${NC}"
+    echo
 }
 
-# Main demo execution
-main() {
-    print_header "FULL PIPELINE DEMO - 1 MINUTE PER STAGE"
+# Function to validate environment
+validate_environment() {
+    print_header "ENVIRONMENT VALIDATION"
     
-    print_info "This demo will run each pipeline stage for 1 minute"
-    print_info "Sensors are already running on all compute nodes"
-    print_info "We'll switch modes and observe data flow\n"
+    local errors=0
     
-    # Initial status check
-    print_header "INITIAL STATUS CHECK"
-    print_info "Skipping S3 bucket checks - running in Bacalhau environment"
-    print_info "Data processing happens within Bacalhau cluster nodes"
-    
-    # STAGE 1: RAW MODE
-    print_header "STAGE 1: RAW MODE"
-    print_info "All sensor data flows directly to ingestion bucket"
-    print_info "No validation or filtering applied\n"
-    
-    print_status "Switching to RAW mode..."
-    bacalhau job run jobs/pipeline-manager-switch.yaml \
-        --template-vars pipeline_type=raw --force --wait
-    
-    countdown $STAGE_DURATION "Processing in RAW mode"
-
-    print_info "RAW mode processing complete - data flows to ingestion stage"
-    
-    # STAGE 2: SCHEMATIZED MODE (for validation)
-    print_header "STAGE 2: SCHEMATIZED MODE"
-    print_info "Data is validated against wind turbine schema"
-    print_info "Valid records → validated bucket"
-    print_info "Invalid records → anomalies bucket\n"
-    
-    print_status "Switching to SCHEMATIZED mode..."
-    bacalhau job run jobs/pipeline-manager-switch.yaml \
-        --template-vars pipeline_type=schematized --force --wait
-    
-    countdown $STAGE_DURATION "Processing with validation"
-
-    print_info "SCHEMATIZED mode processing complete"
-    print_info "Valid data → validated stage, Invalid data → anomalies stage"
-    
-    # STAGE 3: FILTERED MODE
-    print_header "STAGE 3: FILTERED MODE"
-    print_info "Data is filtered and enriched"
-    print_info "Processed data → enriched bucket\n"
-    
-    print_status "Switching to FILTERED mode..."
-    bacalhau job run jobs/pipeline-manager-switch.yaml \
-        --template-vars pipeline_type=filtered --force --wait
-    
-    countdown $STAGE_DURATION "Processing with filtering"
-
-    print_info "FILTERED mode processing complete - data flows to enriched stage"
-    
-    # STAGE 4: AGGREGATED MODE
-    print_header "STAGE 4: AGGREGATED MODE"
-    print_info "Data is aggregated for analytics"
-    print_info "Aggregated metrics → aggregated bucket\n"
-    
-    print_status "Switching to AGGREGATED mode..."
-    bacalhau job run jobs/pipeline-manager-switch.yaml \
-        --template-vars pipeline_type=aggregated --force --wait
-    
-    countdown $STAGE_DURATION "Processing with aggregation"
-
-    print_info "AGGREGATED mode processing complete - data flows to aggregated stage"
-    
-    # STAGE 5: ANOMALY MODE
-    print_header "STAGE 5: ANOMALY MODE"
-    print_info "Focus on anomaly detection"
-    print_info "Anomalous data → anomalies bucket\n"
-    
-    print_status "Switching to ANOMALY mode..."
-    bacalhau job run jobs/pipeline-manager-switch.yaml \
-        --template-vars pipeline_type=anomaly --force --wait
-    
-    countdown $STAGE_DURATION "Detecting anomalies"
-
-    print_info "ANOMALY mode processing complete - data flows to anomalies stage"
-    
-    # FINAL SUMMARY
-    print_header "FINAL SUMMARY"
-    
-    print_status "Checking all buckets after full pipeline run..."
-    echo ""
-    
-    for bucket in ingestion validated anomalies enriched aggregated; do
-        check_bucket_status "$bucket"
-        echo ""
+    # Check for required commands
+    for cmd in docker expanso aws; do
+        if ! command -v $cmd &> /dev/null; then
+            print_error "Required command '$cmd' not found"
+            errors=$((errors + 1))
+        fi
     done
     
-    # Get current pipeline state
-    print_status "Current pipeline configuration:"
-    bacalhau job run jobs/debug-pipeline-state.yaml --force --wait 2>&1 | \
-        grep -A 10 "Standard Output" | tail -n +2 || true
+    # Check for required files
+    if [ ! -f ".env" ]; then
+        print_error "Environment file (.env) not found"
+        errors=$((errors + 1))
+    fi
     
-    print_header "DEMO COMPLETE"
+    if [ $errors -gt 0 ]; then
+        print_error "Environment validation failed with $errors errors"
+        exit 1
+    fi
     
-    print_info "Total demo duration: $(( STAGE_DURATION * 5 )) seconds"
-    print_info "Each stage processed data for $STAGE_DURATION seconds"
-    
-    echo -e "\n${GREEN}✓${NC} Pipeline demo completed successfully!"
-    echo -e "${CYAN}ℹ${NC}  Run 'uv run scripts/query-data-summary.py' for detailed statistics"
-    echo -e "${CYAN}ℹ${NC}  Sensors continue running on all compute nodes"
+    print_info "Environment validation passed"
 }
 
-# Check prerequisites
-check_prerequisites() {
-    if ! command -v aws &> /dev/null; then
-        echo -e "${RED}Error: AWS CLI is not installed${NC}"
-        exit 1
-    fi
-    
-    if ! command -v bacalhau &> /dev/null; then
-        echo -e "${RED}Error: Bacalhau CLI is not installed${NC}"
-        exit 1
-    fi
-    
-    if [ ! -f "jobs/pipeline-manager-switch.yaml" ]; then
-        echo -e "${RED}Error: Not in the correct directory. Run from project root.${NC}"
-        exit 1
-    fi
-}
+# Initial status check
+print_header "INITIAL STATUS CHECK"
+print_info "Skipping S3 bucket checks - running in Expanso environment"
+print_info "Data processing happens within Expanso cluster nodes"
 
-# Run the demo
-check_prerequisites
-main "$@"
+# Validate environment
+validate_environment
+
+# STAGE 1: RAW MODE
+print_header "STAGE 1: RAW DATA PROCESSING"
+print_info "Running edge nodes in RAW mode for $STAGE_DURATION seconds..."
+print_info "All sensor data will be processed as-is"
+
+# Submit RAW processing job
+expanso job run jobs/edge-processing-job.yaml \
+    --template-vars pipeline_type=raw \
+    --force
+
+countdown $STAGE_DURATION "Processing RAW data at edge nodes..."
+
+# STAGE 2: VALIDATED MODE
+print_header "STAGE 2: VALIDATED DATA PROCESSING"
+print_info "Running edge nodes in VALIDATED mode for $STAGE_DURATION seconds..."
+print_info "Only physics-valid data will be uploaded"
+
+# Submit VALIDATED processing job
+expanso job run jobs/edge-processing-job.yaml \
+    --template-vars pipeline_type=validated \
+    --force
+
+countdown $STAGE_DURATION "Processing VALIDATED data at edge nodes..."
+
+# STAGE 3: ANOMALY DETECTION MODE
+print_header "STAGE 3: ANOMALY DETECTION"
+print_info "Running edge nodes in ANOMALY mode for $STAGE_DURATION seconds..."
+print_info "Only anomalous data will be flagged and uploaded"
+
+# Submit ANOMALY processing job
+expanso job run jobs/edge-processing-job.yaml \
+    --template-vars pipeline_type=anomaly \
+    --force
+
+countdown $STAGE_DURATION "Processing ANOMALY data at edge nodes..."
+
+# STAGE 4: SCHEMATIZED MODE
+print_header "STAGE 4: SCHEMATIZED DATA PROCESSING"
+print_info "Running edge nodes in SCHEMATIZED mode for $STAGE_DURATION seconds..."
+print_info "Data will be validated against JSON schema before upload"
+
+# Submit SCHEMATIZED processing job
+expanso job run jobs/edge-processing-job.yaml \
+    --template-vars pipeline_type=schematized \
+    --force
+
+countdown $STAGE_DURATION "Processing SCHEMATIZED data at edge nodes..."
+
+# STAGE 5: AGGREGATED MODE
+print_header "STAGE 5: AGGREGATED DATA PROCESSING"
+print_info "Running edge nodes in AGGREGATED mode for $STAGE_DURATION seconds..."
+print_info "Data will be aggregated before upload"
+
+# Submit AGGREGATED processing job
+expanso job run jobs/edge-processing-job.yaml \
+    --template-vars pipeline_type=aggregated \
+    --force
+
+countdown $STAGE_DURATION "Processing AGGREGATED data at edge nodes..."
+
+# FINAL SUMMARY
+print_header "DEMO COMPLETE"
+print_info "All pipeline stages have been demonstrated"
+print_info "Data has flowed through all processing modes"
+echo ""
+echo "Pipeline Summary:"
+echo "  • RAW:         All sensor data processed"
+echo "  • VALIDATED:   Physics-valid data uploaded"
+echo "  • ANOMALY:     Anomalous readings flagged"
+echo "  • SCHEMATIZED: Schema-validated data uploaded"
+echo "  • AGGREGATED:  Summarized data uploaded"
+echo ""
+print_info "Next steps:"
+print_info "  1. Check Databricks for processed data"
+print_info "  2. Review AutoLoader notebooks"
+print_info "  3. Monitor edge node status"

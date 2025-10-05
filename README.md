@@ -1,4 +1,4 @@
-# Environmental Sensor Data Pipeline with Databricks and Bacalhau
+# Environmental Sensor Data Pipeline with Databricks and Expanso
 
 A production-ready data pipeline for processing environmental sensor data (temperature, humidity, pressure, vibration, voltage) with real-time anomaly detection, multi-stage transformation, and Databricks Unity Catalog integration.
 
@@ -14,14 +14,9 @@ This is the single, authoritative guide that will take you from zero to a fully 
 .
 ├── MASTER_SETUP_AND_DEMO.md    # ⭐ START HERE - Complete setup guide
 ├── .env.example                 # Environment configuration template
-├── databricks-notebooks/        # Databricks AutoLoader notebooks
+├── databricks-notebooks/       # Databricks AutoLoader notebooks
 │   └── setup-and-run-autoloader.py  # Main AutoLoader notebook
-├── databricks-uploader/         # Data validation and upload service
-│   ├── sqlite_to_databricks_uploader.py
-│   ├── environmental_sensor_models.py  # Pydantic models for sensor data
-│   ├── environmental_transformer.py    # Data transformation logic
-│   └── pipeline_manager.py
-├── scripts/                     # Automation and utility scripts
+├── scripts/                    # Automation and utility scripts
 │   ├── validate-env.sh         # Validate environment configuration
 │   ├── create-all-buckets.sh   # Create S3 buckets
 │   ├── seed-buckets-for-autoloader.py  # Seed buckets with sample data
@@ -30,45 +25,51 @@ This is the single, authoritative guide that will take you from zero to a fully 
 │   ├── clean-all-data.sh       # Clean bucket contents
 │   ├── start-environmental-sensor.sh  # Start environmental sensor
 │   └── run-anomaly-demo.sh     # Run complete demo
-├── docs/                        # Additional documentation
+├── docs/                       # Additional documentation
 │   ├── DEVELOPMENT_RULES.md
 │   ├── ENVIRONMENT_SETUP.md
 │   └── QUICK_START_CHECKLIST.md
-└── jobs/                        # Bacalhau job specifications
-    └── databricks-uploader-job.yaml
+├── jobs/                       # Expanso job specifications
+│   └── edge-processing-job.yaml
+└── spot/                       # Edge node deployment files
+    └── instance-files/         # Files deployed to edge nodes
+        ├── etc/                # Configuration files
+        ├── opt/                # Service files and scripts
+        └── setup.sh            # Node setup script
 ```
 
 ## 🎯 Key Features
 
-- **Multi-Stage Pipeline**: Raw → Validated → Anomalies → Schematized → Aggregated data flow
-- **Anomaly Detection**: Physics-based validation for wind turbine data
+- **Edge-First Architecture**: Distributed data processing using Expanso Edge nodes
+- **Anomaly Detection**: Physics-based validation for wind turbine data at the edge
 - **Real-Time Processing**: Streaming ingestion with Databricks AutoLoader
-- **Schema Evolution**: Automatic schema inference and validation
+- **Schema Validation**: Automatic JSON schema validation at the edge
 - **Unity Catalog**: Enterprise governance and data management
-- **Containerized Services**: Docker-based sensors and uploaders
+- **Containerized Edge Services**: Docker-based sensors running on edge nodes
 
 ## 🔧 Architecture
 
 ```mermaid
 graph LR
-    A[Sensor] --> B[SQLite]
-    B --> C[Uploader]
-    C --> D{Validator}
-    D -->|Valid| E[Validated S3]
-    D -->|Invalid| F[Anomalies S3]
-    E --> G[AutoLoader]
-    F --> G
-    G --> H[Databricks]
-    H --> I[Unity Catalog]
+    A[Edge Node] --> B[Sensor]
+    B --> C[SQLite]
+    C --> D[Expanso Edge]
+    D --> E{Validator}
+    E -->|Valid| F[Validated S3]
+    E -->|Invalid| G[Anomalies S3]
+    F --> H[AutoLoader]
+    G --> H
+    H --> I[Databricks]
+    I --> J[Unity Catalog]
 ```
 
 ## 📊 Pipeline Stages
 
-1. **Raw Data**: All sensor readings as received
-2. **Validated Data**: Readings that pass physics validation
-3. **Anomalies**: Readings that violate physics rules
-4. **Schematized Data**: Structured with enforced schema
-5. **Aggregated Data**: Analytics-ready summaries
+1. **Raw Data**: All sensor readings as received at edge nodes
+2. **Validated Data**: Readings that pass physics validation at the edge
+3. **Anomalies**: Readings that violate physics rules detected at the edge
+4. **Schematized Data**: Structured with enforced schema in Databricks
+5. **Aggregated Data**: Analytics-ready summaries in Databricks
 
 ## 🚦 Anomaly Detection Rules
 
@@ -87,7 +88,7 @@ The system detects anomalies in environmental sensor data:
 - AWS Account with S3 access
 - Databricks Workspace with Unity Catalog enabled
 - `uv` package manager (`pip install uv`)
-- Bacalhau CLI v1.5.0+
+- Expanso CLI (latest version)
 
 ## 🏃 Complete Setup Process
 
@@ -96,12 +97,7 @@ The system detects anomalies in environmental sensor data:
 1. **Clone and Configure**:
 ```bash
 # Clone the repository
-git clone <repo-url>
-cd databricks-with-bacalhau
-
-# Copy and configure environment
-cp .env.example .env
-# Edit .env with your credentials
+cd aerolake
 ```
 
 2. **Validate Configuration**:

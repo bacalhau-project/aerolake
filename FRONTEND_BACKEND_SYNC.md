@@ -22,7 +22,7 @@ Based on the backend code, these are the Unity Catalog tables the frontend shoul
 
 ### Bronze Layer (Raw Data)
 - **Table**: `sensor_data_bronze`
-- **Location**: Unity Catalog path configured in databricks-uploader
+- **Location**: Unity Catalog path configured in Databricks notebooks
 - **Schema**: Raw JSON data from sensors
 - **Update Frequency**: Real-time as sensors push data
 
@@ -398,7 +398,7 @@ WHERE anomaly_score > 0.7
 
 ## Support Contacts
 
-- Backend Pipeline: Check `databricks-uploader/README.md`
+- Backend Pipeline: Check `README.md` and `spot/instance-files/` for edge node configuration
 - Databricks Setup: Check `MASTER_SETUP_AND_DEMO.md`
 - Schema Questions: See `wind-turbine-schema.json`
 - Deployment: Check deployment scripts in `scripts/` directory

@@ -210,7 +210,7 @@ def query_unity_catalog():
                             # Get count and date range
                             if id_column:
                                 query = f"""
-                                SELECT 
+                                SELECT
                                     '{table}' as table_name,
                                     COUNT(*) as record_count,
                                     MIN(timestamp) as earliest_record,
@@ -221,7 +221,7 @@ def query_unity_catalog():
                             else:
                                 # No ID column, just get basic stats
                                 query = f"""
-                                SELECT 
+                                SELECT
                                     '{table}' as table_name,
                                     COUNT(*) as record_count,
                                     MIN(timestamp) as earliest_record,
@@ -284,7 +284,7 @@ def query_unity_catalog():
                             )
 
                             union_parts.append(f"""
-                                SELECT '{r[0]}' as stage, timestamp, {id_col} as sensor_id 
+                                SELECT '{r[0]}' as stage, timestamp, {id_col} as sensor_id
                                 FROM {catalog}.{schema}.{r[0]}
                             """)
 
@@ -293,7 +293,7 @@ def query_unity_catalog():
                         WITH all_data AS (
                             {" UNION ALL ".join(union_parts)}
                         )
-                        SELECT 
+                        SELECT
                             COUNT(*) as total_records,
                             COUNT(DISTINCT sensor_id) as total_sensors,
                             MIN(timestamp) as earliest_data,
@@ -451,7 +451,7 @@ def query_unity_catalog():
 
                 if ingestion_table:
                     query = f"""
-                    SELECT 
+                    SELECT
                         DATE_FORMAT(timestamp, 'yyyy-MM-dd HH:00') as hour,
                         COUNT(*) as records,
                         COUNT(DISTINCT sensor_id) as active_sensors
@@ -574,6 +574,7 @@ def query_s3_buckets():
     bucket_names = {
         "ingestion": "expanso-raw-data-us-west-2",  # S3_BUCKET_RAW
         "validated": "expanso-validated-data-us-west-2",  # S3_BUCKET_VALIDATED
+        "anomalies": "expanso-anomalies-data-us-west-2",  # S3_BUCKET_ANOMALIES
         "enriched": "expanso-schematized-data-us-west-2",  # S3_BUCKET_SCHEMATIZED
         "aggregated": "expanso-aggregated-data-us-west-2",  # S3_BUCKET_AGGREGATED
     }

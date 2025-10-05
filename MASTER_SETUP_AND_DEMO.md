@@ -9,7 +9,7 @@ Before starting, ensure you have:
 - Databricks workspace with Unity Catalog enabled
 - Docker installed and running
 - Python 3.11+ with uv package manager
-- Bacalhau CLI installed (v1.5.0+)
+- Expanso CLI installed (latest version)
 
 ## Initial Setup
 
@@ -373,19 +373,15 @@ curl http://localhost:8000/wind-turbine-schema.json
 
 ### Step 4.2: Launch Data Uploader
 
-Start the uploader to process sensor data:
+Start edge processing to process sensor data:
 
 ```bash
-# Terminal 4: Run uploader for normal sensor
-./scripts/start-databricks-uploader.sh \
-    --sensor-port 8080 \
-    --schema-url http://host.docker.internal:8000/wind-turbine-schema.json
+# Terminal 4: Deploy edge nodes with instance files
+# Copy spot/instance-files to edge nodes and run setup.sh
 
-# Terminal 5: Run uploader for anomaly sensor
-./scripts/start-databricks-uploader.sh \
-    --sensor-port 8081 \
-    --schema-url http://host.docker.internal:8000/wind-turbine-schema.json \
-    --container-name wind-turbine-uploader-anomaly
+# Terminal 5: Submit edge processing jobs
+expanso job run jobs/edge-processing-job.yaml \
+    --template-vars pipeline_type=validated
 ```
 
 ### Step 4.3: Monitor Pipeline Progress

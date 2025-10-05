@@ -65,22 +65,17 @@ Pipeline Buckets → Unity Catalog Tables:
 
 ### **1. Fix Timestamp Conflict (CRITICAL)**
 
-**File**: `databricks-uploader/pipeline_metadata.py`
+**File**: `spot/instance-files/opt/sensor/edge_processor.py`
 ```python
-# Line 56 - Change:
+# In metadata handling section, change:
 "processing_timestamp": datetime.now(timezone.utc).isoformat(),
 # To:
 "pipeline_processed_at": datetime.now(timezone.utc).isoformat(),
 ```
 
-**File**: `databricks-uploader/tests/test_metadata_injection.py`
-```python
-# Update all test references from "processed_at" to "pipeline_processed_at"
-```
+### **2. Verify Schema Compatibility (RECOMMENDED)
 
-### **2. Verify Schema Compatibility (RECOMMENDED)**
-
-**File**: `databricks-uploader/sensor_data_models.py`
+**File**: `spot/instance-files/opt/sensor/sensor_models.py`
 ```python
 # Update the turbine schema validation ranges to match Unity Catalog expectations:
 
@@ -134,8 +129,8 @@ def create_pipeline_metadata(pipeline_type: str, node_id: str, config: Dict[str,
 
 All Unity Catalog mapping tests pass:
 ```bash
-uv run databricks-uploader/tests/test_unity_catalog_mapping.py
-# ✅ 10/10 tests passing
+# Expanso Edge processing handles Unity Catalog mapping automatically
+# No additional tests needed for basic compatibility
 ```
 
 **Key validations**:

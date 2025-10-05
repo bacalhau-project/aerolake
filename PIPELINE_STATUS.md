@@ -7,14 +7,14 @@
 ## Working Components
 
 ### 1. Infrastructure ✅
-- **EC2 Instances**: 2 Bacalhau nodes running (`bacalhau-ip-10-0-1-240`, `bacalhau-ip-10-0-1-229`)
-- **Services**: bacalhau.service and sensor.service active
-- **Container**: `ghcr.io/bacalhau-project/databricks-uploader:v1.16.0` operational
+- **EC2 Instances**: 2 Expanso nodes running (`expanso-ip-10-0-1-240`, `expanso-ip-10-0-1-229`)
+- **Services**: expanso.service and sensor.service active
+- **Container**: `ghcr.io/expanso-io/sensor-processor:v1.16.0` operational
 
 ### 2. Data Flow ✅
 - **Sensor → SQLite**: Database created at `/opt/sensor/data/sensor_data.db`
-- **SQLite → Bacalhau**: Mount path `/opt/sensor/data` → `/data/sensor_data` working
-- **Bacalhau → S3**: Successfully uploading to `expanso-raw-data-us-west-2`
+- **SQLite → Expanso**: Mount path `/opt/sensor/data` → `/data/sensor_data` working
+- **Expanso → S3**: Successfully uploading to `expanso-raw-data-us-west-2`
 - **Upload Frequency**: Every 15 seconds, ~45-50KB JSON files
 
 ### 3. Current Job ✅
@@ -51,6 +51,6 @@ systemctl status bacalhau.service sensor.service
 git add PIPELINE_STATUS.md git commit -m "Document working pipeline status
 
 • End-to-end data flow operational
-• Background Bacalhau job running successfully
+• Background Expanso job running successfully
 • S3 uploads confirmed every 15 seconds
 • All major issues resolved and documented"

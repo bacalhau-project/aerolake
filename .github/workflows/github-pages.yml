@@ -257,7 +257,7 @@ jobs:
               <div class="container">
                   <div class="header-banner">
                       <h1>🌬️ Aerolake Wind Turbine Data Pipeline</h1>
-                      <p>Environmental Sensor Data Processing with Databricks & Bacalhau</p>
+                      <p>Environmental Sensor Data Processing with Databricks & Expanso</p>
                   </div>
                   
                   <div class="nav-links">

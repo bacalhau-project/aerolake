@@ -22,7 +22,7 @@ import uvicorn
 app = FastAPI(title="Wind Turbine Schema Server")
 
 # Schema directory
-SCHEMA_DIR = Path(__file__).parent.parent / "databricks-uploader"
+SCHEMA_DIR = Path(__file__).parent.parent / "docs" / "schemas"
 
 
 @app.get("/")
@@ -43,10 +43,10 @@ async def get_schema(schema_name: str):
         schema_name: Schema file name or 'latest' for the current version
     """
     if schema_name == "latest":
-        schema_name = "wind-turbine-schema-v1.0.json"
+        schema_name = "wind-turbine-v1.json"
 
     # Security: only allow specific schema files
-    allowed_schemas = ["wind-turbine-schema.json", "wind-turbine-schema-v1.0.json"]
+    allowed_schemas = ["wind-turbine-v1.json", "wind-turbine-schema.json"]
 
     if not any(schema_name == allowed for allowed in allowed_schemas):
         raise HTTPException(status_code=404, detail="Schema not found")
@@ -54,8 +54,8 @@ async def get_schema(schema_name: str):
     # Try multiple locations
     schema_paths = [
         SCHEMA_DIR / schema_name,
-        SCHEMA_DIR / f"wind-turbine-schema.json",
-        Path(__file__).parent / schema_name,
+        SCHEMA_DIR / f"wind-turbine-v1.json",
+        Path(__file__).parent.parent / schema_name,
     ]
 
     for schema_path in schema_paths:

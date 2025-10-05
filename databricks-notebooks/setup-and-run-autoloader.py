@@ -27,7 +27,7 @@ from datetime import datetime, timedelta
 CATALOG = "expanso_databricks_workspace"
 SCHEMA = "sensor_readings"
 
-# S3 Buckets (source)
+# S3 Buckets (source) - Must match bucket-config.env exactly
 BUCKETS = {
     "ingestion": "s3://expanso-raw-data-us-west-2/",
     "validated": "s3://expanso-validated-data-us-west-2/",
@@ -88,117 +88,68 @@ def upload_schema_samples():
     from datetime import datetime
     import json
 
-    # Sample schemas for each stage
+    # Standardized complete schema for ALL tables - includes all possible fields from real data
+    standard_schema = {
+        "id": 1,
+        "timestamp": datetime.now().isoformat(),
+        "sensor_id": "SCHEMA_SAMPLE",
+        "temperature": 22.0,
+        "humidity": 60.0,
+        "pressure": 101325.0,
+        "vibration": 0.5,
+        "voltage": 24.0,
+        "status_code": 0,
+        "anomaly_flag": 0,
+        "anomaly_type": "spike",
+        "anomaly_score": 0.95,
+        "anomaly_reason": "temperature_spike",
+        "firmware_version": "1.0.0",
+        "model": "SampleModel",
+        "manufacturer": "SampleMfg",
+        "location": "Sample Location",
+        "ambient_temperature": 25.0,
+        "gear_temperature": 35.0,
+        "wind_speed": 12.5,
+        "power_output": 1500.0,
+        "blade_angle_rate": 2.3,
+        "vibration_level": 0.8,
+        "latitude": 0.0,
+        "longitude": 0.0,
+        "original_timezone": "+00:00",
+        "synced": 0,
+        # Additional fields from real sensor data
+        "serial_number": "WeatherFlow-282774",
+        "manufacture_date": "2024-10-18",
+        "deployment_type": "street_pole",
+        "installation_date": "2024-05-04",
+        "height_meters": 33.0,
+        "orientation_degrees": 134.0,
+        "instance_id": "sensor-445222",
+        "sensor_type": "environmental_monitoring",
+        # Pipeline-specific fields
+        "validation_status": "valid",
+        "enrichment_timestamp": datetime.now().isoformat(),
+        "window_start": datetime.now().isoformat(),
+        "window_end": datetime.now().isoformat(),
+        "avg_temperature": 22.0,
+        "min_temperature": 20.0,
+        "max_temperature": 24.0,
+        "avg_humidity": 60.0,
+        "avg_pressure": 101325.0,
+        "avg_vibration": 0.5,
+        "avg_voltage": 24.0,
+        "record_count": 300,
+        "anomaly_count": 0,
+        "_rescued_data": None,
+    }
+
+    # All tables use the same schema - differences are in data presence, not structure
     samples = {
-        "ingestion": [
-            {
-                "id": 1,
-                "timestamp": datetime.now().isoformat(),
-                "sensor_id": "SCHEMA_SAMPLE",
-                "temperature": 22.0,
-                "humidity": 60.0,
-                "pressure": 101325.0,
-                "vibration": 0.5,
-                "voltage": 24.0,
-                "status_code": 0,
-                "anomaly_flag": 0,
-                "firmware_version": "1.0.0",
-                "model": "SampleModel",
-                "manufacturer": "SampleMfg",
-                "location": "Sample Location",
-                "latitude": 0.0,
-                "longitude": 0.0,
-                "original_timezone": "+00:00",
-                "synced": 0,
-            }
-        ],
-        "validated": [
-            {
-                "id": 1,
-                "timestamp": datetime.now().isoformat(),
-                "sensor_id": "SCHEMA_SAMPLE",
-                "temperature": 22.0,
-                "humidity": 60.0,
-                "pressure": 101325.0,
-                "vibration": 0.5,
-                "voltage": 24.0,
-                "status_code": 0,
-                "anomaly_flag": 0,
-                "anomaly_type": None,
-                "firmware_version": "1.0.0",
-                "model": "SampleModel",
-                "manufacturer": "SampleMfg",
-                "location": "Sample Location",
-                "latitude": 0.0,
-                "longitude": 0.0,
-                "original_timezone": "+00:00",
-                "synced": 0,
-                "validation_status": "valid",
-            }
-        ],
-        "enriched": [
-            {
-                "id": 1,
-                "timestamp": datetime.now().isoformat(),
-                "sensor_id": "SCHEMA_SAMPLE",
-                "temperature": 22.0,
-                "humidity": 60.0,
-                "pressure": 101325.0,
-                "vibration": 0.5,
-                "voltage": 24.0,
-                "status_code": 0,
-                "anomaly_flag": 0,
-                "firmware_version": "1.0.0",
-                "model": "SampleModel",
-                "manufacturer": "SampleMfg",
-                "location": "Sample Location",
-                "latitude": 0.0,
-                "longitude": 0.0,
-                "original_timezone": "+00:00",
-                "synced": 0,
-                "enrichment_timestamp": datetime.now().isoformat(),
-            }
-        ],
-        "aggregated": [
-            {
-                "window_start": datetime.now().isoformat(),
-                "window_end": datetime.now().isoformat(),
-                "sensor_id": "SCHEMA_SAMPLE",
-                "avg_temperature": 22.0,
-                "min_temperature": 20.0,
-                "max_temperature": 24.0,
-                "avg_humidity": 60.0,
-                "avg_pressure": 101325.0,
-                "avg_vibration": 0.5,
-                "avg_voltage": 24.0,
-                "record_count": 300,
-                "anomaly_count": 0,
-            }
-        ],
-        "anomalies": [
-            {
-                "id": 1,
-                "timestamp": datetime.now().isoformat(),
-                "sensor_id": "SCHEMA_SAMPLE",
-                "temperature": 45.0,
-                "humidity": 60.0,
-                "pressure": 101325.0,
-                "vibration": 2.5,
-                "voltage": 24.0,
-                "status_code": 1,
-                "anomaly_flag": 1,
-                "anomaly_type": "spike",
-                "anomaly_score": 0.95,
-                "firmware_version": "1.0.0",
-                "model": "SampleModel",
-                "manufacturer": "SampleMfg",
-                "location": "Sample Location",
-                "latitude": 0.0,
-                "longitude": 0.0,
-                "original_timezone": "+00:00",
-                "synced": 0,
-            }
-        ],
+        "ingestion": [standard_schema],
+        "validated": [standard_schema],
+        "enriched": [standard_schema],
+        "aggregated": [standard_schema],
+        "anomalies": [standard_schema],
     }
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

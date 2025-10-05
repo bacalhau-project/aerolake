@@ -1,0 +1,3 @@
+orchestrator:
+  address: nats://<networkId>.us1.cloud.expanso.io:4222
+  require_tls: true

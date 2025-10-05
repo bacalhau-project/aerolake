@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Script to check Docker image versions for all components
+# Script to check Docker image versions for Expanso Edge components
 
 set -e
 
@@ -61,8 +61,7 @@ print_image_info() {
         fi
         
         # Check if running
-        local container_name="${component_name//-uploader/}"
-        container_name="${container_name//-manager/}"
+        local container_name="${component_name//-processor/}"
         if docker ps --format "{{.Names}}" | grep -q "^${container_name}"; then
             echo -e "${GREEN}● Container is running${NC}"
             local uptime=$(docker ps --format "{{.Status}}" \
@@ -88,21 +87,17 @@ fi
 # Main header
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║         Docker Image Version Check for Databricks Pipeline        ║${NC}"
+echo -e "${GREEN}║           Docker Image Version Check for Expanso Edge             ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════════════╝${NC}"
 
 # Check each component
 print_image_info \
-    "ghcr.io/bacalhau-project/sensor-log-generator:latest" \
+    "ghcr.io/expanso-io/sensor-log-generator:latest" \
     "sensor-log-generator"
 
 print_image_info \
-    "ghcr.io/bacalhau-project/databricks-uploader:latest" \
-    "databricks-uploader"
-
-print_image_info \
-    "ghcr.io/bacalhau-project/pipeline-manager:latest" \
-    "pipeline-manager"
+    "ghcr.io/expanso-io/sensor-processor:latest" \
+    "sensor-processor"
 
 # Check for local build tag
 print_header "Local Build Information"
@@ -110,29 +105,5 @@ if [ -f ".latest-image-tag" ]; then
     local_tag=$(cat .latest-image-tag)
     echo -e "${BLUE}Local Build Tag:${NC} $local_tag"
 else
-    echo -e "${YELLOW}No local build tag file found${NC}"
-fi
-
-# Show git info if in a git repo
-if git rev-parse --git-dir > /dev/null 2>&1; then
-    echo ""
-    echo -e "${BLUE}Current Git Branch:${NC} $(git branch --show-current 2>/dev/null || echo 'unknown')"
-    echo -e "${BLUE}Current Git Commit:${NC} $(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
-    if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
-        echo -e "${YELLOW}⚠ Uncommitted changes in repository${NC}"
-    fi
-fi
-
-echo ""
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo ""
-
-# Summary
-echo -e "${GREEN}Quick Commands:${NC}"
-echo "  Pull all images:  docker pull ghcr.io/bacalhau-project/sensor-log-generator:latest && \\"
-echo "                    docker pull ghcr.io/bacalhau-project/databricks-uploader:latest && \\"
-echo "                    docker pull ghcr.io/bacalhau-project/pipeline-manager:latest"
-echo ""
-echo "  Run sensor:       ./run.sh --mode docker --component sensor"
-echo "  Run uploader:     ./run.sh --mode docker --component uploader"
-echo ""
+    echo -e "${YELLOW}No local build tag file found${NC}
+</file>

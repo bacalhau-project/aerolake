@@ -276,25 +276,15 @@ def get_existing_cluster_id(client: WorkspaceClient) -> Optional[str]:
 @click.option(
     "--workspace-path", "-w", help="Workspace path (default: /Users/{email}/demos/{notebook_name})"
 )
-@click.option("--run", "-r", is_flag=True, help="Run the notebook after uploading")
-@click.option("--parameters", "-p", multiple=True, help="Notebook parameters as key=value")
-@click.option("--cluster-id", help="Existing cluster ID to use")
-@click.option("--warehouse-id", help="SQL warehouse ID (for SQL notebooks)")
-@click.option("--wait", is_flag=True, help="Wait for notebook execution to complete")
 @click.option("--skip-validation", is_flag=True, help="Skip syntax validation before upload")
 def main(
     notebook: str,
     workspace_path: Optional[str],
-    run: bool,
-    parameters: tuple,
-    cluster_id: Optional[str],
-    warehouse_id: Optional[str],
-    wait: bool,
     skip_validation: bool,
 ):
-    """Upload and optionally run a Databricks notebook."""
+    """Upload a Databricks notebook."""
 
-    console.print("[bold blue]Databricks Notebook Upload & Run[/bold blue]")
+    console.print("[bold blue]Databricks Notebook Upload[/bold blue]")
     console.print("=" * 50)
 
     # Initialize client
@@ -361,62 +351,10 @@ def main(
         console.print("[red]✗ Failed to upload notebook[/red]")
         sys.exit(1)
 
-    # Run notebook if requested
-    if run:
-        console.print(f"\n[bold]Running notebook:[/bold]")
-
-        # Parse parameters
-        params = {}
-        for param in parameters:
-            if "=" in param:
-                key, value = param.split("=", 1)
-                params[key] = value
-
-        if params:
-            console.print("  Parameters:")
-            for k, v in params.items():
-                console.print(f"    {k} = {v}")
-
-        # Try to find existing cluster if not specified
-        if not cluster_id and not warehouse_id:
-            console.print("  Looking for existing cluster...")
-            cluster_id = get_existing_cluster_id(client)
-            if cluster_id:
-                console.print(f"  Found cluster: {cluster_id}")
-            else:
-                console.print("  No running cluster found, will create new one")
-
-        # Create and run job
-        job_name = f"Run {notebook_path.stem} - {time.strftime('%Y%m%d_%H%M%S')}"
-        run_id = create_and_run_job(
-            client, workspace_path, job_name, params, cluster_id, warehouse_id
-        )
-
-        if run_id:
-            console.print(f"[green]✓ Job started with run ID: {run_id}[/green]")
-
-            # Get run URL
-            run_url = f"{os.getenv('DATABRICKS_HOST')}/#job/{run_id}"
-            console.print(f"  View run: {run_url}")
-
-            # Wait for completion if requested
-            if wait:
-                success = monitor_job_run(client, run_id)
-                if success:
-                    console.print("[green]✓ Notebook execution completed successfully[/green]")
-                else:
-                    console.print("[red]✗ Notebook execution failed[/red]")
-                    sys.exit(1)
-        else:
-            console.print("[red]✗ Failed to start job[/red]")
-            sys.exit(1)
-
     # Summary
     console.print("\n[bold]Summary:[/bold]")
     console.print(f"  Notebook uploaded to: {workspace_path}")
-    if run:
-        console.print(f"  Job run ID: {run_id}")
-        console.print(f"  Status: {'Running' if not wait else 'Completed'}")
+    console.print(f"  You can now run it manually in Databricks workspace")
 
 
 if __name__ == "__main__":

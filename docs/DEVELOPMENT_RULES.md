@@ -5,10 +5,10 @@ This document contains critical rules learned from development history to preven
 ## 🚨 CRITICAL RULES - ALWAYS FOLLOW
 
 ### 1. Database Location
-- **ALWAYS** use `sample-sensor/data/sensor_data.db` as the database location
-- **NEVER** use `databricks-uploader/sensor_data.db`
-- **NEVER** look at or reference `databricks-uploader/sensor_data.db`
-- All scripts must mount from `sample-sensor/data/sensor_data.db`
+- **ALWAYS** use `sample-sensor/data/sensor_data.db` as the database location for local testing
+- **NEVER** directly access SQLite databases on edge nodes
+- **NEVER** bypass the Expanso Edge processing pipeline
+- All scripts must mount from `sample-sensor/data/sensor_data.db` for local testing
 
 ### 2. Table and Schema Naming Convention
 - **SQLite Table**: `sensor_readings` (NOT sensor_data)
@@ -196,10 +196,9 @@ docker run -d --name test-container image:tag
 - **NEVER**: Modified by any other component
 - **ISOLATION**: Complete - no other component writes to sensor
 
-#### Databricks Uploader (databricks-uploader/)
-- **OWNS**: Upload state management
+#### Expanso Edge Processor (spot/instance-files/)
+- **OWNS**: Edge data processing and upload state management
 - **READS**: Sensor database (read-only mount)
-- **READS**: Pipeline configuration from pipeline-manager
 - **WRITES**: Data to S3 buckets
 - **NEVER**: Touches sensor database for writes
 - **NEVER**: Creates Databricks tables or schemas
@@ -207,11 +206,11 @@ docker run -d --name test-container image:tag
 
 ### 🚨 CRITICAL DATABASE ACCESS RULES
 
-#### Databricks Uploader Database Access
+#### Edge Processor Database Access
 **ABSOLUTELY CRITICAL - VIOLATION IS A PRODUCTION INCIDENT**:
 
 1. **NEVER WRITE TO SENSOR DATABASE**
-   - The uploader must ONLY open sensor_data.db in read-only mode
+   - The edge processor must ONLY open sensor_data.db in read-only mode
    - Use connection string: `file:{db_path}?mode=ro`
    - Set PRAGMA: `query_only=1` 
    - NEVER set journal modes or any write-affecting PRAGMAs
@@ -226,11 +225,10 @@ docker run -d --name test-container image:tag
    # DO NOT ADD: conn.execute("PRAGMA journal_mode=WAL;")  # This is a WRITE operation!
    ```
 
-3. **UPLOADER STATE MANAGEMENT**
-   - Uploader maintains its OWN state in `/databricks-uploader/state/`
-   - NEVER store uploader state in sensor database
+3. **PROCESSOR STATE MANAGEMENT**
+   - Edge processor maintains its OWN state in `/expanso_data/state/`
+   - NEVER store processor state in sensor database
    - Track upload progress in `upload_state.json`
-   - Store pipeline config in separate `pipeline_config.db`
 
 4. **ERROR MESSAGES TO WATCH FOR**
    - "attempt to write a readonly database" = CRITICAL BUG
@@ -239,7 +237,7 @@ docker run -d --name test-container image:tag
 
 5. **TESTING DATABASE ACCESS**
    ```bash
-   # Test that uploader CANNOT write
+   # Test that edge processor CANNOT write
    sqlite3 "file:sample-sensor/data/sensor_data.db?mode=ro" \
      "INSERT INTO sensor_readings VALUES(...);"
    # Should fail with: Error: attempt to write a readonly database
@@ -251,10 +249,10 @@ docker run -d --name test-container image:tag
 - Read-only access prevents ALL write-related bugs
 - Production systems require strict separation of concerns
 
-#### Pipeline Manager (pipeline-manager/)
-- **OWNS**: Its own configuration database
+#### Expanso Edge Configuration
+- **OWNS**: Edge node configuration management
 - **WRITES**: Pipeline configuration atomically
-- **PROVIDES**: Read-only configuration to uploader
+- **PROVIDES**: Read-only configuration to edge processors
 - **MANAGES**: Pipeline type transitions
 - **NEVER**: Directly uploads to S3
 - **NEVER**: Touches sensor database
@@ -270,15 +268,15 @@ docker run -d --name test-container image:tag
 - **NEVER**: Modifies uploader state
 
 ### 25. Data Flow Rules
-1. **Sensor → Uploader**: Read-only mount of sensor_data.db
-2. **Pipeline Manager → Uploader**: Read-only config mount
-3. **Uploader → S3**: Write-only to buckets
+1. **Sensor → Edge Processor**: Read-only mount of sensor_data.db
+2. **Edge Configuration → Edge Processor**: Read-only config mount
+3. **Edge Processor → S3**: Write-only to buckets
 4. **S3 → Databricks**: Read-only via Auto Loader
 5. **No circular dependencies**: Each component has clear inputs/outputs
 
 ### 26. Configuration Mount Rules
-- Pipeline Manager writes to `/config/pipeline-config.yaml`
-- Uploader mounts as read-only: `/app/config/pipeline-config.yaml:ro`
+- Edge Configuration writes to `/config/pipeline-config.yaml`
+- Edge Processor mounts as read-only: `/app/config/pipeline-config.yaml:ro`
 - Configuration updates are atomic (write to temp, then rename)
 - Uploader polls for config changes, never writes back
 
@@ -486,7 +484,7 @@ Only create new files when:
 
 ## ⚠️ NEVER DO THIS
 
-1. **NEVER** reference `databricks-uploader/sensor_data.db`
+1. **NEVER** directly access SQLite databases on edge nodes
 2. **NEVER** use `sensor_data` as table, schema, or database name
 3. **NEVER** use `sensor_data_` prefix for Databricks tables
 4. **NEVER** hardcode S3 paths

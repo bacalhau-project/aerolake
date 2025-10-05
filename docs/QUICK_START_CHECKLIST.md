@@ -15,10 +15,10 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ### 2. Verify Directory
 ```bash
-cd /Users/daaronch/code/bacalhau-examples/data-engineering/databricks-with-bacalhau/databricks-uploader
+cd /Users/daaronch/code/aerolake
 pwd
 ```
-**✅ Expected:** `/Users/daaronch/code/bacalhau-examples/data-engineering/databricks-with-bacalhau/databricks-uploader`
+**✅ Expected:** `/Users/daaronch/code/aerolake`
 
 ### 3. Test uv
 ```bash

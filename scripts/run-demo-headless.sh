@@ -49,11 +49,15 @@ fi
 
 # Step 2: Create some test data
 echo -e "\n${GREEN}Step 2: Creating test sensor data${NC}"
-cd ../databricks-uploader
 
 # Create test data if it doesn't exist
-if [ ! -f "sensor_data.db" ]; then
-    uv run -s create_test_sensor_data.py
+if [ ! -f "../sample-sensor/data/sensor_data.db" ]; then
+    echo "Creating test sensor database..."
+    # Use sensor simulator to generate test data
+    ../scripts/start-sensor.sh --test-mode
+    echo "✓ Created test sensor data"
+else
+    echo "✓ Using existing sensor database"
 fi
 
 # Step 3: Upload test data to S3
@@ -88,7 +92,7 @@ echo "4. Auto Loader processed the files automatically"
 echo "5. Queried results to verify data was ingested"
 
 echo -e "\n${YELLOW}Next steps:${NC}"
-echo "1. Upload more data: cd databricks-uploader && uv run -s test-upload.py"
+echo "1. Process more data: expanso job run jobs/edge-processing-job.yaml"
 echo "2. Query results: cd scripts && uv run -s run-databricks-sql.py -q 'SELECT * FROM sensor_readings_ingestion LIMIT 10'"
 echo "3. Run teardown: uv run -s upload-and-run-notebook.py -n ../databricks-notebooks/02-teardown-autoloader-demo.py -r"
 

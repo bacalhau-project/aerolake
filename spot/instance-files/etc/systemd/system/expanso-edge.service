@@ -1,0 +1,19 @@
+[Unit]
+Description=Expanso Edge Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+EnvironmentFile=-/etc/expanso/edge/expanso-edge-env
+ExecStart=/usr/local/bin/expanso-edge run
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=expanso-edge
+
+[Install]
+WantedBy=multi-user.target

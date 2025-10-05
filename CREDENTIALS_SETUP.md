@@ -60,12 +60,11 @@ Test your credentials:
 # Test AWS access
 aws sts get-caller-identity
 
-# Test local uploader
-cd databricks-uploader
-uv run sqlite_to_databricks_uploader.py --config databricks-s3-uploader-config-local.yaml --dry-run
+# Test edge processing
+expanso node list
 
-# Test Bacalhau job
-bacalhau job run jobs/databricks-uploader-job.yaml
+# Test Expanso job
+expanso job run jobs/edge-processing-job.yaml
 ```
 
 ## Troubleshooting

@@ -1,14 +1,12 @@
 services:
   sensor-simulators:
-    image: ghcr.io/bacalhau-project/sensor-log-generator:latest
+    image: alpine:latest
     pull_policy: always
     restart: unless-stopped
-    environment:
-      - CONFIG_FILE=/config/sensor-config.yaml
-      - IDENTITY_FILE=/config/node_identity.json
-
+    command: sh /app/sensor-simulator.sh
     volumes:
       - ./config:/config
-      - ./data:/app/data # Mount local data directory for database persistence
-      - ./logs:/app/logs # Keep logs directory for backward compatibility
-      - ./exports:/app/exports # Keep exports directory for data export functionality
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./exports:/app/exports
+      - ./sensor-simulator.sh:/app/sensor-simulator.sh

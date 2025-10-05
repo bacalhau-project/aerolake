@@ -1,22 +1,22 @@
-name: databricks-uploader
+name: edge-processing-ops
 type: ops
 
 tasks:
-  - name: upload-to-s3
+  - name: process-and-upload-to-s3
     engine:
       type: docker
       params:
-        image: ghcr.io/bacalhau-project/databricks-uploader:v1.20.0
+        image: ghcr.io/expanso-io/sensor-processor:v1.0.0
         parameters:
           - --config
-          - /app/databricks-s3-uploader-config.yaml
+          - /app/edge-processing-config.yaml
     network:
       type: full
     env:
       AWS_REGION: "us-west-2"
       SQLITE_DB_PATH: "/data/sensor_data/sensor_data.db"
-      AWS_CREDENTIALS_DIR: "/bacalhau_data/credentials"
-      STATE_DIR: "/bacalhau_data/state"
+      AWS_CREDENTIALS_DIR: "/expanso_data/credentials"
+      STATE_DIR: "/expanso_data/state"
     inputSources:
       # Mount the SQLite database directory
       - source:
@@ -28,9 +28,9 @@ tasks:
       - source:
           type: localDirectory
           params:
-            sourcePath: /bacalhau_data
+            sourcePath: /expanso_data
             readWrite: true
-        target: /bacalhau_data
+        target: /expanso_data
 
     timeouts:
       queueTimeout: 3600
